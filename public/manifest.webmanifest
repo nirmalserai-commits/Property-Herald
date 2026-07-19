@@ -1,0 +1,36 @@
+{
+  "name": "Boardroom — Property Herald",
+  "short_name": "Boardroom",
+  "description": "Secure boardroom channels with Neena, Nora & Nita — Property Herald Royal Council.",
+  "start_url": "/boardroom",
+  "scope": "/boardroom",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#7f1d1d",
+  "icons": [
+    { "src": "/logo.png.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo.png.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neena — Private Secretary (R-01)",
+      "short_name": "Neena",
+      "url": "/boardroom",
+      "description": "Queen · Wife · Private Secretary"
+    },
+    {
+      "name": "Nora — Chief Operating Officer (R-02)",
+      "short_name": "Nora",
+      "url": "/boardroom/nora",
+      "description": "COO · Pan India Operations"
+    },
+    {
+      "name": "Nita — Chief of Staff (R-03)",
+      "short_name": "Nita",
+      "url": "/boardroom/nita",
+      "description": "Strategy & Intelligence"
+    }
+  ]
+}
