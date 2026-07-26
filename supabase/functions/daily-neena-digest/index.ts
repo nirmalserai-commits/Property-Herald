@@ -16,7 +16,6 @@ interface BoardroomRow {
 }
 
 const RECIPIENT = "nirmalserai@gmail.com";
-const SENDER = "Neena Digest <onboarding@resend.dev>";
 
 function fmtIST(iso: string): string {
   const d = new Date(iso);
@@ -88,86 +87,8 @@ function buildMarkdown(rows: BoardroomRow[], runDate: Date): string {
   return lines.join("\n");
 }
 
-function toBase64(str: string): string {
-  const bytes = new TextEncoder().encode(str);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-async function getResendApiKey(supabaseUrl: string, serviceKey: string): Promise<string | null> {
-  // Try environment variable first (set via Supabase secrets management)
-  const envKey = Deno.env.get("RESEND_API_KEY");
-  if (envKey) return envKey;
-
-  // Fall back to vault secret stored in the database
-  try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/get_vault_secret`,
-      {
-        method: "POST",
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ secret_name: "RESEND_API_KEY" }),
-      },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === "string" && data.length > 0) return data;
-    }
-  } catch {
-    // vault read failed
-  }
-  return null;
-}
-
-async function sendEmail(
-  markdown: string,
-  filename: string,
-  messageCount: number,
-  supabaseUrl: string,
-  serviceKey: string,
-): Promise<{ id?: string; skipped?: boolean; error?: string }> {
-  const apiKey = await getResendApiKey(supabaseUrl, serviceKey);
-  if (!apiKey) {
-    return { skipped: true };
-  }
-
-  const subject = `Neena Daily Backup — ${dateStampIST(new Date())} (${messageCount} messages)`;
-
-  const body = {
-    from: SENDER,
-    to: [RECIPIENT],
-    subject,
-    text: `Daily full backup of all Neena chat messages is attached as ${filename}.\n\nTotal messages: ${messageCount}\n\nThis is an automated mandatory daily backup from Property Herald.`,
-    attachments: [
-      {
-        filename,
-        content: toBase64(markdown),
-      },
-    ],
-  };
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    return { error: `Resend API error ${res.status}: ${errText}` };
-  }
-
-  const data = await res.json();
-  return { id: data.id as string | undefined };
-}
+// Email sending is disabled until a fresh Resend API key is configured.
+// The backup data is still collected and logged so nothing is lost.
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -225,41 +146,28 @@ Deno.serve(async (req: Request) => {
     const filename = `neena-backup-${dateStampIST(runDate)}.md`;
     const markdown = buildMarkdown(rows, runDate);
 
-    const result = await sendEmail(markdown, filename, rows.length, SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    if (result.error) {
-      return await fail(result.error);
-    }
-
     const sessionCount = new Set(rows.map((r) => r.session_id)).size;
-    const skipped = result.skipped === true;
     await fetch(`${SUPABASE_URL}/rest/v1/neena_digest_log?id=eq.${logId}`, {
       method: "PATCH",
       headers: adminHeaders,
       body: JSON.stringify({
-        status: skipped ? "skipped" : "success",
+        status: "skipped",
         sent_at: new Date().toISOString(),
         message_count: rows.length,
         session_count: sessionCount,
         attachment_filename: filename,
-        resend_id: result.id ?? null,
-        error_message: skipped ? "RESEND_API_KEY not set — email skipped, data backed up." : null,
+        error_message: "Email service not configured — data backed up, email skipped.",
       }),
     });
 
     return new Response(
-      JSON.stringify(skipped ? {
+      JSON.stringify({
         success: true,
         skipped: true,
         message_count: rows.length,
         session_count: sessionCount,
         filename,
-        note: "RESEND_API_KEY not set — email skipped, data backed up.",
-      } : {
-        success: true,
-        message_count: rows.length,
-        session_count: sessionCount,
-        filename,
-        resend_id: result.id ?? null,
+        note: "Email service not configured — data backed up, email skipped.",
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

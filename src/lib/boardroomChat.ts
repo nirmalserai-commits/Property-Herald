@@ -44,6 +44,7 @@ async function callBoardRoom(
       persona,
       conversationHistory,
     }),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) {
@@ -82,7 +83,7 @@ export async function boardroomChat(
     } catch (err) {
       if (attempt < maxRetries) {
         onRetry?.(attempt + 1, maxRetries);
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
         continue;
       }
       throw err;
@@ -115,7 +116,7 @@ export async function boardroomChatStream(
       break;
     } catch {
       if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
         continue;
       }
       throw new Error('No reply from Board-Room');

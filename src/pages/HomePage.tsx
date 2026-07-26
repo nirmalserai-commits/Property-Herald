@@ -5,7 +5,7 @@ import type { City, Magazine, DaughterPicture } from '../types/database';
 import {
   Building2, Users, BookOpen, ArrowRight, MapPin,
   TrendingUp, Sparkles, Check, Bot, ChevronDown,
-  Globe, Zap, Award, MessageCircle, Sparkle,
+  Globe, Zap, Award, MessageCircle, Sparkle, Handshake, User,
 } from 'lucide-react';
 
 interface LiveStats {
@@ -20,6 +20,67 @@ interface CorridorCounts {
   gujarat: number;
   ncr: number;
   karnataka: number;
+}
+
+// ─── Meet Our Team (admin-uploadable photos) ───
+const TEAM_MEMBERS = [
+  'Nirmal Serai', 'Rajesh Kumar', 'Priya Sharma', 'Amit Patel', 'Sneha Reddy',
+  'Vikram Singh', 'Anita Desai', 'Rohan Mehta', 'Kavya Nair', 'Arjun Gupta',
+  'Deepa Iyer', 'Sanjay Verma', 'Meera Joshi', 'Karan Malhotra', 'Pooja Bhat',
+];
+
+function MeetOurTeam() {
+  const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from('site_config').select('key, value').like('key', 'team_photo_%')
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, string> = {};
+          for (const row of data as { key: string; value: string }[]) {
+            map[row.key.replace('team_photo_', '')] = row.value;
+          }
+          setPhotos(map);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  return (
+    <section className="py-16 bg-gradient-to-b from-cream to-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-navy text-sm font-display font-semibold uppercase tracking-wider mb-4">
+            <Users className="w-4 h-4 mr-2 text-gold" />Our People
+          </div>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our Team</h2>
+          <p className="text-warm-gray text-lg">The people building India's first AI-powered real estate platform</p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+          {TEAM_MEMBERS.map((name, i) => {
+            const photoUrl = photos[name];
+            return (
+              <div key={i} className="flex flex-col items-center group">
+                <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-2 border-gold/30 overflow-hidden bg-gradient-to-br from-navy/10 to-gold/10 mb-3 transition-all group-hover:border-gold/60 group-hover:shadow-lg">
+                  {loading ? (
+                    <div className="w-full h-full animate-pulse bg-gray-200" />
+                  ) : photoUrl ? (
+                    <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="w-10 h-10 text-navy/30" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-serif font-bold text-navy text-sm text-center">{name}</h3>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function HomePage() {
@@ -207,6 +268,28 @@ export function HomePage() {
           India. Intelligence. Integrity.
         </h2>
       </section>
+
+      {/* ═══ FOUNDING PARTNER PROGRAMME ═══ */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-gold via-gold-400 to-gold py-14">
+        <div className="absolute inset-0 geo-pattern opacity-20" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/90 border border-navy/40 text-gold text-sm font-display font-semibold uppercase tracking-wider mb-5">
+            <Sparkles className="w-4 h-4 mr-2" />Founding Partner Programme
+          </div>
+          <h2 className="text-3xl md:text-5xl font-serif font-bold text-navy mb-4">
+            Join as a Founding Partner
+          </h2>
+          <p className="text-navy/80 text-lg md:text-xl max-w-2xl mx-auto mb-8 font-sans">
+            Become part of India's first AI-powered real estate platform
+          </p>
+          <Link to="/founding-partner" className="inline-flex items-center px-8 py-3.5 rounded-xl bg-navy text-gold font-display font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:bg-navy/90 transition-all" style={{ letterSpacing: '0.06em' }}>
+            <Handshake className="w-5 h-5 mr-2" />Join Now
+          </Link>
+        </div>
+      </section>
+
+      {/* ═══ MEET OUR TEAM ═══ */}
+      <MeetOurTeam />
 
       {/* ═══ MEET OUR AI TEAM ═══ */}
       <section className="py-16 bg-cream">

@@ -11,7 +11,6 @@ interface DigestRow {
   session_count: number;
   attachment_filename: string | null;
   status: 'pending' | 'success' | 'failed' | 'skipped';
-  resend_id: string | null;
   error_message: string | null;
 }
 
@@ -273,11 +272,10 @@ export function AdminDigestLog() {
           <p className="text-sm text-blue-800">
             <strong>Download Backup Now</strong> pulls every Neena message live from the database
             (through your authenticated session) and saves it as a Markdown file to your device.
-            No email service required — this works even without <span className="font-mono text-xs">RESEND_API_KEY</span>.
+            No email service required — this works entirely from your browser.
           </p>
           <p className="text-sm text-blue-800">
-            <strong>Scheduled email:</strong> Every night at 2:00 AM IST, all Neena messages are emailed to{' '}
-            <span className="font-mono text-xs">nirmalserai@gmail.com</span> as a Markdown attachment. The email send is optional — if <span className="font-mono text-xs">RESEND_API_KEY</span> is not configured, the backup still runs and is logged as <span className="font-semibold">skipped</span>, so no data is lost.
+            <strong>Scheduled backup:</strong> Every night at 2:00 AM IST, all Neena messages are collected and logged. Email delivery is currently disabled and will be re-enabled once an email service is configured. The backup data is always saved so nothing is lost.
           </p>
         </div>
 
