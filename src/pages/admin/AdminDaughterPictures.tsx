@@ -2,134 +2,261 @@ import { useState, useEffect } from 'react';
 import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import type { DaughterPicture } from '../../types/database';
-import { Upload, RefreshCw, User, Check } from 'lucide-react';
+import type { TeamMember } from '../../types/database';
+import { Plus, Edit3, Trash2, X, Save, Upload, User, RefreshCw, Eye, EyeOff } from 'lucide-react';
+
+const MAX_MEMBERS = 15;
+
+const EMPTY: Partial<TeamMember> = {
+  name: '', job_title: '', position: '', pod_name: '', display_order: 0, active: true, photo_url: '',
+};
 
 export function AdminDaughterPictures() {
   const { user } = useAuth();
-  const [members, setMembers] = useState<DaughterPicture[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploadingId, setUploadingId] = useState<string | null>(null);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [modal, setModal] = useState<'add' | 'edit' | null>(null);
+  const [selected, setSelected] = useState<TeamMember | null>(null);
+  const [form, setForm] = useState<Partial<TeamMember>>(EMPTY);
 
   async function fetchMembers() {
     setLoading(true);
-    setError(null);
-    const { data, error: fetchError } = await supabase
-      .from('daughter_pictures')
-      .select('*')
-      .order('display_order');
-    if (fetchError) setError(fetchError.message);
-    if (data) setMembers(data as DaughterPicture[]);
+    const { data } = await supabase.from('team_members').select('*').order('display_order');
+    if (data) setMembers(data as TeamMember[]);
     setLoading(false);
   }
 
   useEffect(() => { fetchMembers(); }, []);
 
-  async function handleUpload(member: DaughterPicture, file: File) {
-    setUploadingId(member.id);
-    setError(null);
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const safeName = member.daughter_name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const path = `Team/${safeName}-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('Assets')
-      .upload(path, file, { cacheControl: '3600', upsert: false });
-
-    if (uploadError) {
-      setError(`Upload failed for ${member.display_name}: ${uploadError.message}`);
-      setUploadingId(null);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from('Assets').getPublicUrl(path);
-    const publicUrl = urlData.publicUrl;
-
-    const { error: updateError } = await supabase
-      .from('daughter_pictures')
-      .update({ profile_picture_url: publicUrl })
-      .eq('id', member.id);
-
-    if (updateError) {
-      setError(`Save failed for ${member.display_name}: ${updateError.message}`);
-      setUploadingId(null);
-      return;
-    }
-
-    if (user?.email) {
-      await logAdminAction(supabase, user.email, 'update_team_photo', 'daughter_pictures', member.id, { url: publicUrl });
-    }
-
-    setMembers(prev => prev.map(m => m.id === member.id ? { ...m, profile_picture_url: publicUrl } : m));
-    setUploadingId(null);
-    setSavedId(member.id);
-    setTimeout(() => setSavedId(prev => prev === member.id ? null : prev), 2000);
+  function openAdd() {
+    setForm({ ...EMPTY, display_order: members.length + 1 });
+    setSelected(null);
+    setModal('add');
   }
+
+  function openEdit(m: TeamMember) {
+    setForm({ ...m });
+    setSelected(m);
+    setModal('edit');
+  }
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const path = `team/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from('team-photos').upload(path, file);
+    if (!error) {
+      const { data } = supabase.storage.from('team-photos').getPublicUrl(path);
+      setForm(f => ({ ...f, photo_url: data.publicUrl }));
+    }
+    setUploading(false);
+  }
+
+  async function handleSave() {
+    if (!form.name?.trim() || !form.job_title?.trim()) return;
+    setSaving(true);
+
+    const payload = {
+      name: form.name,
+      job_title: form.job_title,
+      position: form.position || null,
+      pod_name: form.pod_name || null,
+      display_order: form.display_order ?? 0,
+      active: form.active ?? true,
+      photo_url: form.photo_url || null,
+    };
+
+    if (modal === 'add') {
+      const { data } = await supabase
+        .from('team_members')
+        .insert(payload)
+        .select('id')
+        .maybeSingle();
+      if (data && user?.email) {
+        await logAdminAction(supabase, user.email, 'create_team_member', 'team_members', data.id, { name: form.name });
+      }
+    } else if (selected) {
+      await supabase.from('team_members').update(payload).eq('id', selected.id);
+      if (user?.email) {
+        await logAdminAction(supabase, user.email, 'update_team_member', 'team_members', selected.id, { name: form.name });
+      }
+    }
+
+    setSaving(false);
+    setModal(null);
+    fetchMembers();
+  }
+
+  async function handleToggle(m: TeamMember) {
+    await supabase.from('team_members').update({ active: !m.active }).eq('id', m.id);
+    fetchMembers();
+  }
+
+  async function handleDelete(m: TeamMember) {
+    if (!confirm(`Delete ${m.name}?`)) return;
+    await supabase.from('team_members').delete().eq('id', m.id);
+    if (user?.email) {
+      await logAdminAction(supabase, user.email, 'delete_team_member', 'team_members', m.id, { name: m.name });
+    }
+    fetchMembers();
+  }
+
+  const atMax = members.length >= MAX_MEMBERS;
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-navy">Team Photos</h1>
-            <p className="text-sm text-gray-500 mt-1">Upload a profile photo for each of the 15 team members</p>
+            <h1 className="text-2xl font-serif font-bold text-navy">Team Pictures</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage team member photos ({members.length}/{MAX_MEMBERS})
+            </p>
           </div>
-          <button onClick={fetchMembers} className="p-2 text-gray-500 hover:text-navy rounded-lg hover:bg-gray-100" title="Refresh">
-            <RefreshCw className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button onClick={fetchMembers} className="p-2 text-gray-500 hover:text-navy rounded-lg hover:bg-gray-100">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              onClick={openAdd}
+              disabled={atMax}
+              className="flex items-center gap-2 px-4 py-2 bg-navy text-gold rounded-xl font-semibold text-sm border border-gold/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus className="w-4 h-4" />
+              {atMax ? 'Max 15 Reached' : 'Add Member'}
+            </button>
+          </div>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-            {error}
-          </div>
-        )}
-
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {[1,2,3,4,5].map(i => <div key={i} className="bg-white rounded-xl border h-56 animate-pulse" />)}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white rounded-xl border h-64 animate-pulse" />
+            ))}
           </div>
         ) : members.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
-            No team members found in the database.
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+            <div className="w-16 h-16 bg-gold/10 border border-gold/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-gold" />
+            </div>
+            <p className="text-gray-500 mb-4">No team members yet. Add your first member to get started.</p>
+            <button
+              onClick={openAdd}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-navy text-gold rounded-xl font-semibold text-sm border border-gold/20"
+            >
+              <Plus className="w-4 h-4" />Add Member
+            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {members.map(m => (
-              <div key={m.id} className="bg-white rounded-xl border border-gray-200 p-4 text-center flex flex-col items-center">
-                <div className="w-24 h-24 rounded-full mx-auto bg-gray-100 overflow-hidden border-2 border-gold/30 flex items-center justify-center mb-3">
-                  {m.profile_picture_url ? (
-                    <img src={m.profile_picture_url} alt={m.display_name} className="w-full h-full object-cover" />
+              <div key={m.id} className={`bg-white rounded-xl border ${m.active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+                <div className="aspect-[3/5] bg-gray-100 overflow-hidden rounded-t-xl">
+                  {m.photo_url ? (
+                    <img src={m.photo_url} alt={m.name} className="w-full h-full object-cover object-center" />
                   ) : (
-                    <User className="w-10 h-10 text-gray-300" />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="w-8 h-8 text-gray-300" />
+                    </div>
                   )}
                 </div>
-                <p className="font-serif font-bold text-navy text-sm">{m.display_name}</p>
-                {m.pod_title && <p className="text-xs text-gold mt-0.5 mb-3">{m.pod_title}</p>}
-                <label className="cursor-pointer mt-auto">
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(m, f); e.currentTarget.value = ''; }}
-                    className="hidden"
-                  />
-                  <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    uploadingId === m.id ? 'bg-gray-100 text-gray-400'
-                    : savedId === m.id ? 'bg-green-50 text-green-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
-                    {uploadingId === m.id ? 'Uploading…'
-                      : savedId === m.id ? <><Check className="w-3 h-3" />Saved</>
-                      : <><Upload className="w-3 h-3" />{m.profile_picture_url ? 'Replace' : 'Upload'}</>}
-                  </span>
-                </label>
+                <div className="p-3 text-center">
+                  <h3 className="font-serif font-bold text-navy text-sm">{m.name}</h3>
+                  <p className="text-xs text-gray-500">{m.job_title}</p>
+                  {m.pod_name && <p className="text-xs text-gold/60 mt-1">{m.pod_name}</p>}
+                </div>
+                <div className="px-3 pb-3 flex items-center gap-1 border-t border-gray-50 pt-2">
+                  <button onClick={() => openEdit(m)} className="p-2 text-gray-400 hover:text-navy hover:bg-gray-100 rounded-lg">
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleToggle(m)} className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg">
+                    {m.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                  <button onClick={() => handleDelete(m)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {modal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-serif font-bold text-navy">
+                {modal === 'add' ? 'Add Member' : 'Edit Member'}
+              </h2>
+              <button onClick={() => setModal(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-24 h-32 bg-gray-100 rounded-lg overflow-hidden border-2 border-gold/30 flex items-center justify-center">
+                  {form.photo_url ? (
+                    <img src={form.photo_url} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-8 h-8 text-gray-300" />
+                  )}
+                </div>
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} className="hidden" />
+                  <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm">
+                    <Upload className="w-4 h-4" />
+                    {uploading ? 'Uploading…' : 'Upload Photo'}
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Name *</label>
+                  <input type="text" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Job Title *</label>
+                  <input type="text" value={form.job_title ?? ''} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Position</label>
+                  <input type="text" value={form.position ?? ''} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Pod Name</label>
+                  <input type="text" value={form.pod_name ?? ''} onChange={e => setForm(f => ({ ...f, pod_name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Display Order</label>
+                  <input type="number" value={form.display_order ?? 0} onChange={e => setForm(f => ({ ...f, display_order: parseInt(e.target.value) }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={form.active ?? true} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-navy" />
+                <span className="text-sm text-gray-700">Active</span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 p-6 border-t">
+              <button onClick={() => setModal(null)} className="px-5 py-2 border border-gray-300 rounded-xl text-sm">Cancel</button>
+              <button
+                onClick={handleSave}
+                disabled={saving || !form.name?.trim() || !form.job_title?.trim()}
+                className="flex items-center gap-2 px-5 py-2 bg-navy text-gold rounded-xl text-sm font-semibold disabled:opacity-50 border border-gold/20"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

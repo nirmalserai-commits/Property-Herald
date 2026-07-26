@@ -41,7 +41,7 @@ function MeetOurTeam() {
   const [formError, setFormError] = useState<string | null>(null);
 
   async function fetchMembers() {
-    const { data } = await supabase.from('team_members').select('*').order('position');
+    const { data } = await supabase.from('team_members').select('*').eq('active', true).order('display_order');
     if (data) setMembers(data as TeamMember[]);
     setLoading(false);
   }
@@ -57,19 +57,19 @@ function MeetOurTeam() {
     if (!name.trim()) { setFormError('Please enter a name.'); return; }
     setSaving(true);
 
-    let imageUrl: string | null = null;
+    let photoUrl: string | null = null;
     if (photo) {
       const safeName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `Team/${safeName}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('Assets').upload(path, photo, { cacheControl: '3600', upsert: false });
+      const path = `team/${safeName}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('team-photos').upload(path, photo, { cacheControl: '3600', upsert: false });
       if (upErr) { setFormError(`Photo upload failed: ${upErr.message}`); setSaving(false); return; }
-      imageUrl = supabase.storage.from('Assets').getPublicUrl(path).data.publicUrl;
+      photoUrl = supabase.storage.from('team-photos').getPublicUrl(path).data.publicUrl;
     }
 
-    const nextPosition = members.length > 0 ? Math.max(...members.map(m => m.position)) + 1 : 1;
+    const nextOrder = members.length + 1;
     const { error: insErr } = await supabase.from('team_members').insert({
-      position: nextPosition, name: name.trim(), role: role.trim() || null, image_url: imageUrl,
+      name: name.trim(), job_title: role.trim() || null, display_order: nextOrder, active: true, photo_url: photoUrl,
     });
     if (insErr) { setFormError(`Save failed: ${insErr.message}`); setSaving(false); return; }
 
@@ -95,8 +95,8 @@ function MeetOurTeam() {
           ) : members.map((m) => (
             <div key={m.id} className="flex flex-col items-center group">
               <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-2 border-gold/30 overflow-hidden bg-gradient-to-br from-navy/10 to-gold/10 mb-3 transition-all group-hover:border-gold/60 group-hover:shadow-lg">
-                {m.image_url ? (
-                  <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" />
+                {m.photo_url ? (
+                  <img src={m.photo_url} alt={m.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <User className="w-10 h-10 text-navy/30" />
@@ -104,7 +104,7 @@ function MeetOurTeam() {
                 )}
               </div>
               <h3 className="font-serif font-bold text-navy text-sm text-center">{m.name}</h3>
-              {m.role && <p className="text-xs text-gold mt-0.5 text-center">{m.role}</p>}
+              {m.job_title && <p className="text-xs text-gold mt-0.5 text-center">{m.job_title}</p>}
             </div>
           ))}
         </div>

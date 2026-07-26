@@ -631,6 +631,11 @@ export interface TeamMember {
   name: string;
   role: string | null;
   image_url: string | null;
+  job_title: string | null;
+  pod_name: string | null;
+  display_order: number;
+  active: boolean;
+  photo_url: string | null;
   created_at: string;
 }
 
