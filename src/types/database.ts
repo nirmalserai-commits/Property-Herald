@@ -625,6 +625,15 @@ export interface NeighbourhoodData {
   updated_at: string;
 }
 
+export interface TeamMember {
+  id: string;
+  position: number;
+  name: string;
+  role: string | null;
+  image_url: string | null;
+  created_at: string;
+}
+
 export interface DaughterPicture {
   id: string;
   daughter_name: string;

@@ -46,7 +46,7 @@ import { AmbassadorsPage } from './pages/AmbassadorsPage';
 import { AdminPublicAmbassadors } from './pages/admin/AdminPublicAmbassadors';
 import { GreetingsVouchersPage } from './pages/GreetingsVouchersPage';
 import { NakshaReportPage } from './pages/NakshaReportPage';
-import { ComingSoonPage, MaintenancePage } from './pages/ComingSoonPage';
+import { MaintenancePage } from './pages/MaintenancePage';
 import { HallOfFamePage } from './pages/HallOfFamePage';
 import { TermsPage } from './pages/TermsPage';
 import { FoundingPartnerPage, FoundingAgencyPage } from './pages/FoundingPages';
@@ -63,7 +63,7 @@ import { supabase } from './lib/supabase';
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
 
 function useSiteFlags() {
-  const [flags, setFlags] = useState<Record<string, boolean>>({ coming_soon_active: true, coming_soon_mode: true, maintenance_mode: false, nora_rest_mode: false });
+  const [flags, setFlags] = useState<Record<string, boolean>>({ maintenance_mode: false, nora_rest_mode: false });
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -90,17 +90,11 @@ function AppRoutes() {
 
   const isAdminRoute = location.pathname.startsWith('/admin');
   const isLoginPage = location.pathname === '/login';
-  const isComingSoon = flags.coming_soon_active ?? flags.coming_soon_mode;
   const isMaintenance = flags.maintenance_mode;
 
   // Maintenance mode: only admin can access, everyone else sees maintenance
   if (isMaintenance && !isAdmin) {
     return <MaintenancePage />;
-  }
-
-  // Coming Soon mode: only admin and login routes accessible
-  if (isComingSoon && !isAdmin && !isLoginPage) {
-    return <ComingSoonPage />;
   }
 
   // Admin routes: only admin can access

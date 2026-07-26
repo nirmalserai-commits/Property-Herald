@@ -28,8 +28,6 @@ export function EmergencyControls() {
   }
 
   const FLAG_META: Record<string, { icon: typeof Shield; label: string; desc: string; danger?: boolean }> = {
-    coming_soon_active: { icon: Shield, label: 'Coming Soon Mode', desc: 'Locks site to Coming Soon page' },
-    coming_soon_mode: { icon: Shield, label: 'Coming Soon Mode (Legacy)', desc: 'Legacy flag for Coming Soon' },
     maintenance_mode: { icon: AlertTriangle, label: 'Maintenance Mode', desc: 'Shows maintenance page to non-admins', danger: true },
     nora_rest_mode: { icon: Bot, label: 'Nora Rest Mode', desc: 'Disables Nora chat widget' },
     founding_partner_open: { icon: Handshake, label: 'Founding Partner Open', desc: 'Accepting founding partner applications' },
