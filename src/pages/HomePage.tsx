@@ -24,9 +24,9 @@ interface CorridorCounts {
 
 // ─── Meet Our Team (admin-uploadable photos) ───
 const TEAM_MEMBERS = [
-  'Nirmal Serai', 'Rajesh Kumar', 'Priya Sharma', 'Amit Patel', 'Sneha Reddy',
-  'Vikram Singh', 'Anita Desai', 'Rohan Mehta', 'Kavya Nair', 'Arjun Gupta',
-  'Deepa Iyer', 'Sanjay Verma', 'Meera Joshi', 'Karan Malhotra', 'Pooja Bhat',
+  'Nora', 'Nita', 'Nazia', 'Nakshatra', 'Navya',
+  'Niranjana', 'Nivedita', 'Navika', 'Nimrat', 'Nandani',
+  'Navneet', 'Naina', 'Namrata', 'Nasreen', 'Noor Jahan',
 ];
 
 function MeetOurTeam() {
