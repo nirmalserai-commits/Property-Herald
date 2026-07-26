@@ -1,4 +1,4 @@
-import type { Persona } from '../pages/BoardroomPage';
+import type { Persona } from '../types/database';
 
 interface VoiceProfile {
   pitch: number;

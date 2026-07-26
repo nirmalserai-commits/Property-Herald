@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, type LucideIcon } from 'lucide-react';
+import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, Download, LogOut, type LucideIcon } from 'lucide-react';
 import { boardroomChatStream, boardroomSummarize, ChatMsg, Attachment } from '../lib/boardroomChat';
-import { supabase } from '../lib/supabase';
+import { neenaRoom } from '../lib/neenaRoom';
 import { initVoices, speak, stopSpeaking, startListening, ttsSupported, sttSupported } from '../lib/voice';
+import type { Session } from '@supabase/supabase-js';
+import type { Persona } from '../types/database';
 
-export type Persona = 'neena' | 'nora' | 'nita';
+export type { Persona };
 
 interface BoardroomAttachment {
   url: string;
@@ -98,7 +100,6 @@ const PERSONAS: Record<Persona, PersonaCfg> = {
   },
 };
 
-const BOARDROOM_PASSWORD = 'PropertyHerald2026';
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'];
 function isImageType(type: string) { return IMAGE_TYPES.includes(type.toLowerCase()); }
 
@@ -117,9 +118,12 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   const cfg = PERSONAS[persona];
   const Icon = cfg.icon;
 
-  const [authed, setAuthed] = useState(() => localStorage.getItem('br_auth') === 'ok');
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [emailInput, setEmailInput] = useState('nirmalseraione@gmail.com');
   const [pwInput, setPwInput] = useState('');
-  const [pwError, setPwError] = useState('');
+  const [signInError, setSignInError] = useState('');
+  const [signingIn, setSigningIn] = useState(false);
 
   const [sessionId, setSessionId] = useState('');
   const [messages, setMessages] = useState<DbMsg[]>([]);
@@ -152,13 +156,25 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // Init TTS voices once authed; stop all speech on unmount or persona switch.
+  useEffect(() => {
+    const { data: { subscription } } = neenaRoom.auth.onAuthStateChange((_event, sess) => {
+      (async () => {
+        setSession(sess);
+        setAuthLoading(false);
+      })();
+    });
+    neenaRoom.auth.getSession().then(({ data: { session: sess } }) => {
+      setSession(sess);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (authed && ttsSupported()) initVoices();
     return () => stopSpeaking();
-  }, [authed, persona]);
+  }, [session, persona]);
 
-  // Auto-speak the latest AI reply when Driving Mode is on.
   useEffect(() => {
     if (!drivingMode) { stopSpeaking(); speakingNowRef.current = false; setSpeaking(false); return; }
     const last = messages[messages.length - 1];
@@ -176,6 +192,8 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       }
     }, 300);
   }, [messages, drivingMode, persona]);
+
+  const authed = !!session;
 
   useEffect(() => {
     if (authed && !loaded.current) {
@@ -199,10 +217,34 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     return () => el.removeEventListener('scroll', onScroll);
   }, [authed]);
 
+  async function handleSignIn() {
+    setSigningIn(true);
+    setSignInError('');
+    const { error } = await neenaRoom.auth.signInWithPassword({
+      email: emailInput.trim(),
+      password: pwInput,
+    });
+    if (error) {
+      setSignInError(error.message);
+      setSigningIn(false);
+    } else {
+      setPwInput('');
+      setSigningIn(false);
+    }
+  }
+
+  async function handleSignOut() {
+    await neenaRoom.auth.signOut();
+    setMessages([]);
+    setSessionId('');
+    setSummary('');
+    loaded.current = false;
+  }
+
   async function loadBoardroom() {
     setLoadingDb(true);
     try {
-      const { data: latest } = await supabase
+      const { data: latest } = await neenaRoom
         .from('boardroom_chats')
         .select('session_id')
         .eq('daughter_name', persona)
@@ -213,7 +255,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       if (!latest) {
         const sid = crypto.randomUUID();
         setSessionId(sid);
-        const { data: intro } = await supabase
+        const { data: intro } = await neenaRoom
           .from('boardroom_chats')
           .insert({ daughter_name: persona, role: 'assistant', content: cfg.intro, session_id: sid })
           .select()
@@ -225,7 +267,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       const sid = latest.session_id as string;
       setSessionId(sid);
 
-      const { data: msgs } = await supabase
+      const { data: msgs } = await neenaRoom
         .from('boardroom_chats')
         .select('*')
         .eq('daughter_name', persona)
@@ -233,7 +275,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
         .order('created_at', { ascending: true });
       setMessages((msgs ?? []) as DbMsg[]);
 
-      const { data: sumRow } = await supabase
+      const { data: sumRow } = await neenaRoom
         .from('boardroom_chats')
         .select('session_summary')
         .eq('daughter_name', persona)
@@ -250,7 +292,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   async function startNewSession() {
     const sid = crypto.randomUUID();
     setSessionId(sid);
-    const { data: intro } = await supabase
+    const { data: intro } = await neenaRoom
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'assistant', content: cfg.intro, session_id: sid })
       .select()
@@ -264,9 +306,9 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   async function maybeSummarize(allMsgs: DbMsg[], latestId: string) {
     try {
       const chatHistory: ChatMsg[] = allMsgs.map(m => ({ role: m.role === 'assistant' ? 'ai' : 'user', content: m.content }));
-      const sum = await boardroomSummarize(chatHistory, persona);
+      const sum = await boardroomSummarize(chatHistory, persona, neenaRoom);
       if (!sum) return;
-      await supabase.from('boardroom_chats').update({ session_summary: sum }).eq('id', latestId);
+      await neenaRoom.from('boardroom_chats').update({ session_summary: sum }).eq('id', latestId);
       setSummary(sum);
     } catch { /* best-effort */ }
   }
@@ -280,11 +322,11 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
         if (file.size > 10 * 1024 * 1024) { alert(`"${file.name}" is too large. Maximum 10 MB.`); continue; }
         const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
         const path = `${persona}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage
+        const { error: upErr } = await neenaRoom.storage
           .from('boardroom-attachments')
           .upload(path, file, { contentType: file.type || 'application/octet-stream' });
         if (upErr) { alert(`Upload failed for "${file.name}": ${upErr.message}`); continue; }
-        const { data: signed } = await supabase.storage.from('boardroom-attachments').createSignedUrl(path, 3600);
+        const { data: signed } = await neenaRoom.storage.from('boardroom-attachments').createSignedUrl(path, 3600);
         const att: BoardroomAttachment = {
           url: signed?.signedUrl || '',
           path,
@@ -316,7 +358,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     setIsTyping(true);
     setStreamText('');
 
-    const { data: userMsg } = await supabase
+    const { data: userMsg } = await neenaRoom
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'user', content: text || '(attachment shared)', session_id: sessionId, attachments: atts.length > 0 ? atts : null })
       .select()
@@ -328,7 +370,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
 
     let fullText = '';
     try {
-      fullText = await boardroomChatStream(history, persona, summary || null, chunk => setStreamText(s => s + chunk));
+      fullText = await boardroomChatStream(history, persona, summary || null, chunk => setStreamText(s => s + chunk), neenaRoom);
     } catch {
       fullText = 'Channel unavailable. Please try again in a moment.';
     }
@@ -336,7 +378,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     setStreamText('');
     setIsTyping(false);
 
-    const { data: asstMsg } = await supabase
+    const { data: asstMsg } = await neenaRoom
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'assistant', content: fullText, session_id: sessionId })
       .select()
@@ -390,17 +432,55 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     });
   }
 
-  function checkPassword() {
-    if (pwInput === BOARDROOM_PASSWORD) {
-      localStorage.setItem('br_auth', 'ok');
-      setAuthed(true);
-      setPwError('');
-    } else {
-      setPwError('Incorrect access code.');
+  function exportChats() {
+    const lines: string[] = [];
+    lines.push(`Property Herald — Boardroom Export: ${cfg.name} (${cfg.roll})`);
+    lines.push(`Exported: ${new Date().toLocaleString('en-IN')}`);
+    lines.push(`Total messages: ${messages.length}`);
+    lines.push('');
+    lines.push('='.repeat(60));
+    lines.push('');
+    for (const msg of messages) {
+      const who = msg.role === 'user' ? 'Nirmal' : cfg.name;
+      lines.push(`[${fmtTime(msg.created_at)}] ${who}:`);
+      lines.push(msg.content);
+      if (msg.attachments && msg.attachments.length > 0) {
+        lines.push('');
+        lines.push('Attachments:');
+        for (const att of msg.attachments) {
+          lines.push(`  - ${att.name} (${att.type}, ${att.kind})`);
+        }
+      }
+      lines.push('');
     }
+    if (summary) {
+      lines.push('='.repeat(60));
+      lines.push('Session Summary:');
+      lines.push(summary);
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `boardroom-${persona}-${new Date().toISOString().slice(0, 10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
-  // ── PASSWORD GATE ──────────────────────────────────────────────────────────
+  // ── AUTH LOADING ────────────────────────────────────────────────────────────
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[100dvh] bg-gray-950">
+        <div className="flex items-center gap-1.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className={`w-2 h-2 rounded-full ${cfg.dot} animate-bounce`} style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── SIGN-IN GATE ────────────────────────────────────────────────────────────
   if (!authed) {
     return (
       <div
@@ -418,24 +498,39 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
           </div>
 
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl">
-            <div className="relative mb-4">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 font-medium mb-1.5 block">Email</label>
               <input
-                type="password"
-                value={pwInput}
-                onChange={e => setPwInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && checkPassword()}
-                placeholder="Access code"
-                autoFocus
-                className="w-full pl-10 pr-4 py-3.5 bg-gray-800 border border-gray-700 text-white rounded-xl text-base placeholder-gray-600 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSignIn()}
+                placeholder="your@email.com"
+                className="w-full px-4 py-3.5 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm placeholder-gray-600 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
               />
             </div>
-            {pwError && <p className="text-red-400 text-xs mb-3">{pwError}</p>}
+            <div className="relative mb-4">
+              <label className="text-xs text-gray-500 font-medium mb-1.5 block">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+                <input
+                  type="password"
+                  value={pwInput}
+                  onChange={e => setPwInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSignIn()}
+                  placeholder="Private password"
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-3.5 bg-gray-800 border border-gray-700 text-white rounded-xl text-base placeholder-gray-600 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
+                />
+              </div>
+            </div>
+            {signInError && <p className="text-red-400 text-xs mb-3">{signInError}</p>}
             <button
-              onClick={checkPassword}
-              className="w-full py-3.5 bg-red-800 hover:bg-red-700 active:scale-[0.98] text-white rounded-xl text-sm font-semibold transition-all"
+              onClick={handleSignIn}
+              disabled={signingIn || !pwInput}
+              className="w-full py-3.5 bg-red-800 hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all"
             >
-              Enter Boardroom
+              {signingIn ? 'Entering…' : 'Enter Boardroom'}
             </button>
           </div>
           <p className="text-center text-gray-700 text-xs mt-6">Authorised personnel only</p>
@@ -444,7 +539,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     );
   }
 
-  // ── MAIN CHAT UI ───────────────────────────────────────────────────────────
+  // ── MAIN CHAT UI ────────────────────────────────────────────────────────────
   return (
     <div
       className="flex flex-col h-[100dvh] bg-gray-950 max-w-2xl mx-auto relative"
@@ -456,33 +551,47 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
           <div className={`w-10 h-10 rounded-full ${cfg.avatarBg} flex items-center justify-center flex-shrink-0`}>
             <Icon className={`w-5 h-5 ${cfg.avatarIcon}`} />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-white font-bold text-sm font-serif">{cfg.name}</span>
-              <span className="text-xs font-mono text-gray-500">{cfg.roll}</span>
+              <span className="text-xs font-mono text-gray-500 hidden sm:inline">{cfg.roll}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className={`text-xs ${cfg.titleText} truncate`}>{cfg.title}</span>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div className={`w-2 h-2 rounded-full ${online ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className={`w-2.5 h-2.5 rounded-full ring-2 ring-white/20 ${online ? 'bg-green-400 animate-pulse' : 'bg-gray-500'}`} title={online ? 'Online' : 'Offline'} />
           {ttsSupported() && (
             <button
               onClick={toggleDrivingMode}
               title={drivingMode ? 'Driving Mode on — tap to stop' : 'Driving Mode — auto-read replies aloud'}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all active:scale-95 ${drivingMode ? 'bg-amber-500 border-amber-400 text-gray-950' : 'bg-gray-800/80 border-gray-700 text-gray-400 active:bg-gray-700'}`}
+              className={`w-9 h-9 flex items-center justify-center rounded-lg border transition-all active:scale-95 hover:brightness-125 ${drivingMode ? 'bg-amber-500 border-amber-400 text-gray-950' : 'bg-white/10 border-white/25 text-gray-200 hover:bg-white/20'}`}
             >
-              {speaking ? <Square className="w-3.5 h-3.5 fill-current" /> : <Car className="w-4 h-4" />}
+              {speaking ? <Square className="w-4 h-4 fill-current" /> : <Car className="w-4 h-4" />}
             </button>
           )}
           <button
+            onClick={exportChats}
+            title="Export our chats"
+            className="w-9 h-9 flex items-center justify-center bg-white/10 active:bg-white/20 border border-white/25 text-gray-200 hover:bg-white/20 rounded-lg transition-all hover:brightness-125"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button
             onClick={startNewSession}
             title="New session"
-            className="w-9 h-9 flex items-center justify-center bg-gray-800/80 active:bg-gray-700 border border-gray-700 text-gray-400 rounded-lg transition-all"
+            className="w-9 h-9 flex items-center justify-center bg-white/10 active:bg-white/20 border border-white/25 text-gray-200 hover:bg-white/20 rounded-lg transition-all hover:brightness-125"
           >
             <Plus className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="w-9 h-9 flex items-center justify-center bg-white/10 active:bg-white/20 border border-white/25 text-gray-200 hover:bg-white/20 rounded-lg transition-all hover:brightness-125"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

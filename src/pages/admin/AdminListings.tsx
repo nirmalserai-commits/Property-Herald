@@ -44,10 +44,12 @@ export function AdminListings() {
 
   async function moderate(listing: Listing, status: 'approved' | 'rejected' | 'flagged', reason?: string) {
     setActionLoading(listing.id);
+    const approvalLevel = status === 'approved' ? 'nirmal_approved' : status === 'rejected' ? 'rejected' : 'flagged';
     const { error } = await supabase.from('listings').update({
       moderation_status: status,
       moderation_reason: reason ?? null,
       is_active: status === 'approved',
+      approval_level: approvalLevel,
     }).eq('id', listing.id);
     if (!error) {
       await logAdminAction(supabase, user!.email!, `${status}_listing`, 'listings', listing.id, { title: listing.title, reason });

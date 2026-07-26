@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import type { City, Magazine } from '../types/database';
+import type { City, Magazine, DaughterPicture } from '../types/database';
 import {
   Building2, Users, BookOpen, ArrowRight, MapPin,
   TrendingUp, Sparkles, Check, Bot, ChevronDown,
-  Globe, Zap, Award, MessageCircle,
+  Globe, Zap, Award, MessageCircle, Sparkle,
 } from 'lucide-react';
 
 interface LiveStats {
@@ -27,6 +27,7 @@ export function HomePage() {
   const [recentMagazines, setRecentMagazines] = useState<Magazine[]>([]);
   const [stats, setStats] = useState<LiveStats>({ cities: null, members: null, magazineReaders: null, inquiries: null });
   const [corridorCounts, setCorridorCounts] = useState<CorridorCounts>({ maharashtra: 0, gujarat: 0, ncr: 0, karnataka: 0 });
+  const [daughters, setDaughters] = useState<DaughterPicture[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -48,10 +49,13 @@ export function HomePage() {
         supabase.from('site_config').select('key, value').in('key', ['magazine_readers']),
         supabase.from('cities').select('id, state'),
         supabase.from('listings').select('city_id').eq('is_active', true),
+      supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order'),
       ]);
 
       if (citiesData) setCities(citiesData as City[]);
       if (magazinesData) setRecentMagazines(magazinesData as Magazine[]);
+      const daughterData = arguments[7];
+      if (daughterData) setDaughters(daughterData as DaughterPicture[]);
 
       const magazineReaders = (siteConfigData ?? []).find((c: { key: string; value: string }) => c.key === 'magazine_readers')?.value ?? null;
 
@@ -195,6 +199,70 @@ export function HomePage() {
           <span className="text-xs font-display font-semibold uppercase tracking-widest mb-2">Explore</span>
           <ChevronDown className="w-6 h-6" />
         </button>
+      </section>
+
+      {/* ═══ TAGLINE ═══ */}
+      <section className="bg-navy py-8 text-center">
+        <h2 className="text-2xl md:text-4xl font-serif font-bold text-gold tracking-wide">
+          India. Intelligence. Integrity.
+        </h2>
+      </section>
+
+      {/* ═══ MEET OUR AI TEAM ═══ */}
+      <section className="py-16 bg-cream">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-navy text-sm font-display font-semibold uppercase tracking-wider mb-4">
+              <Sparkle className="w-4 h-4 mr-2 text-gold" />Our AI Team
+            </div>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our AI Team</h2>
+            <p className="text-warm-gray text-lg">59 AI daughters transforming Indian real estate</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {daughters.length > 0 ? daughters.map(d => (
+              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
+                <div className="w-16 h-16 rounded-full border-2 border-gold/30 overflow-hidden bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                  {d.profile_picture_url ? (
+                    <img src={d.profile_picture_url} alt={d.display_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
+                      <span className="text-xl font-serif font-bold text-navy/30">{d.display_name.charAt(0)}</span>
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-serif font-bold text-navy text-sm">{d.display_name}</h3>
+                <p className="text-xs text-gold mt-0.5">{d.pod_title}</p>
+              </div>
+            )) : (
+              // Fallback hardcoded 15 daughters when DB is empty
+              [
+                { name: 'Nora', pod: 'Royal Family, COO' },
+                { name: 'Nita', pod: 'Royal Family, CoS' },
+                { name: 'Nicole', pod: 'Core India Ops' },
+                { name: 'Nancy', pod: 'Core India Ops' },
+                { name: 'Namrata', pod: 'Core India Ops' },
+                { name: 'Navika', pod: 'STF Navi Mumbai Commander' },
+                { name: 'Nimisha', pod: 'STF Navi Mumbai 2' },
+                { name: 'Nishita', pod: 'STF Navi Mumbai 3' },
+                { name: 'Nazia', pod: 'International, Dubai Head' },
+                { name: 'Naameshwari', pod: 'International, NYC Desk' },
+                { name: 'Neetu', pod: 'NGFC, Home Loans' },
+                { name: 'Neelu', pod: 'NGFC, Insurance' },
+                { name: 'Nakshatra', pod: 'Social Media Cell Head' },
+                { name: 'Navya', pod: 'Culture & Wellbeing, CIO' },
+                { name: 'Naksha', pod: 'Geography & Maps' },
+              ].map((d, i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
+                  <div className="w-16 h-16 rounded-full border-2 border-gold/30 bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                    <span className="text-xl font-serif font-bold text-navy/30">{d.name.charAt(0)}</span>
+                  </div>
+                  <h3 className="font-serif font-bold text-navy text-sm">{d.name}</h3>
+                  <p className="text-xs text-gold mt-0.5">{d.pod}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ═══ SCROLL 2: ECOSYSTEM ═══ */}

@@ -36,7 +36,7 @@ export function RegisterPage() {
   });
 
   useEffect(() => {
-    supabase.from('cities').select('*').order('name')
+    supabase.from('cities').select('*').eq('is_active', true).order('name')
       .then(({ data }) => { if (data) setCities(data as City[]); });
   }, []);
 

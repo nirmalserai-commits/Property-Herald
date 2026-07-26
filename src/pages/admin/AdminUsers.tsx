@@ -4,7 +4,9 @@ import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import type { Profile, TokenWallet, TokenTransaction } from '../../types/database';
 import { Search, ChevronDown, Gift, Ban, CheckCircle, X, History, ChevronLeft, ChevronRight, KeyRound, Copy } from 'lucide-react';
-import { supabaseUrl, supabaseAnonKey } from '../../lib/supabase';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 interface UserRow extends Profile {
   wallet?: TokenWallet;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import type { Ambassador, ChatMessage } from '../types/database';
 import { X, Send, Minimize2, ChevronDown, ArrowRight } from 'lucide-react';
 
@@ -109,6 +110,7 @@ function visitorId(): string {
 }
 
 export function AmbassadorWidget() {
+  const { user } = useAuth();
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [active, setActive] = useState<Ambassador | null>(null);
   const [open, setOpen] = useState(false);
@@ -120,6 +122,7 @@ export function AmbassadorWidget() {
   const [intentScore, setIntentScore] = useState(0);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [dismissed, setDismissed] = useState(false);
+  const [noraRestMode, setNoraRestMode] = useState(false);
 
   // Guided mode state
   const [guidedMode, setGuidedMode] = useState(true);
@@ -138,6 +141,9 @@ export function AmbassadorWidget() {
       setGuidedMode(false);
       setGuidedComplete(true);
     }
+    // Check Nora Rest Mode
+    supabase.from('site_flags').select('flag_value').eq('flag_name', 'nora_rest_mode').maybeSingle()
+      .then(({ data }) => { if (data) setNoraRestMode((data as { flag_value: boolean }).flag_value); });
   }, []);
 
   useEffect(() => {
@@ -373,7 +379,7 @@ export function AmbassadorWidget() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({ messages: updated }),
+        body: JSON.stringify({ messages: updated, user_id: user?.id || null }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -411,6 +417,19 @@ export function AmbassadorWidget() {
   }, [active, messages, intentScore, conversationId]);
 
   if (!active || dismissed) return null;
+
+  if (noraRestMode) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 max-w-xs">
+        <div className="bg-white rounded-2xl shadow-2xl border border-gold/30 p-5 text-center">
+          <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl">💤</span>
+          </div>
+          <p className="text-sm text-gray-600">Nora is resting for a moment. Please email <a href="mailto:support@propertyherald.in" className="text-gold font-medium">support@propertyherald.in</a> and she will be back with you very soon.</p>
+        </div>
+      </div>
+    );
+  }
 
   const currentGuidedQuestion = guidedStep >= 1 && guidedStep <= 5 ? GUIDED_QUESTIONS[guidedStep - 1] : null;
 

@@ -270,7 +270,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, user_id } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -287,6 +287,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Fetch conversation memory if user_id is provided
+    let memorySummary = "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    if (user_id) {
+      try {
+        const memRes = await fetch(`${supabaseUrl}/rest/v1/conversation_memory?user_id=eq.${user_id}&daughter_name=eq.nora&select=summary_text,message_count`, {
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        });
+        if (memRes.ok) {
+          const memData = await memRes.json();
+          if (memData && memData.length > 0 && memData[0].summary_text) {
+            memorySummary = `\n\n## CONVERSATION MEMORY\nYou have spoken with this buyer before. Here is a summary of your previous conversations:\n${memData[0].summary_text}\n\nUse this context to provide a personal, warm experience. Reference previous conversations naturally.`;
+          }
+        }
+      } catch { /* memory fetch failed — continue without */ }
+    }
+
+    const systemPromptWithMemory = SYSTEM_PROMPT + memorySummary;
+
     const anthropicMessages = messages.map((m: { role: string; content: string }) => ({
       role: m.role === "ambassador" ? "assistant" : "user",
       content: m.content,
@@ -302,7 +323,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 512,
-        system: SYSTEM_PROMPT,
+        system: systemPromptWithMemory,
         messages: anthropicMessages,
       }),
     });
@@ -318,6 +339,43 @@ Deno.serve(async (req: Request) => {
 
     const data = await response.json();
     const text = data.content?.[0]?.text ?? "Hi! I'm Nora, your Property Herald AI Assistant. How can I help you find your perfect property today?";
+
+    // Save/update conversation memory every 10 messages
+    if (user_id && messages.length > 0 && messages.length % 10 === 0) {
+      try {
+        // Generate a summary of the conversation so far
+        const summaryRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 256,
+            system: "Summarize this conversation in 3-4 sentences. Include: buyer's name if known, what they're looking for, budget, preferred city/locality, intent level, and any key preferences. This summary will be used to remember the buyer in future conversations.",
+            messages: [{ role: "user", content: `Summarize this conversation:\n${messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join("\n")}` }],
+          }),
+        });
+        if (summaryRes.ok) {
+          const summaryData = await summaryRes.json();
+          const summaryText = summaryData.content?.[0]?.text ?? "";
+          if (summaryText) {
+            // Upsert conversation memory
+            await fetch(`${supabaseUrl}/rest/v1/conversation_memory?user_id=eq.${user_id}&daughter_name=eq.nora`, {
+              method: "DELETE",
+              headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+            });
+            await fetch(`${supabaseUrl}/rest/v1/conversation_memory`, {
+              method: "POST",
+              headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ user_id, daughter_name: "nora", summary_text: summaryText, message_count: messages.length, last_updated: new Date().toISOString() }),
+            });
+          }
+        }
+      } catch { /* memory save failed — continue */ }
+    }
 
     return new Response(
       JSON.stringify({ reply: text }),

@@ -5,7 +5,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import {
   LayoutDashboard, Users, Building2, ShieldCheck, Coins,
   TrendingUp, Bell, LogOut, ArrowLeft, Shield, Bot, Image, Landmark,
-  Video, Handshake, Brain, Lock, Mail,
+  Video, Handshake, Brain, Lock, Mail, Award, MapPin, FolderOpen, UserCheck,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
@@ -14,12 +14,18 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/admin/users', label: 'Users', icon: Users, exact: false },
+  { to: '/admin/registrations', label: 'Registrations', icon: UserCheck, exact: false },
   { to: '/admin/listings', label: 'Listings', icon: Building2, exact: false },
   { to: '/admin/verifications', label: 'Verifications', icon: ShieldCheck, exact: false },
+  { to: '/admin/locations', label: 'Locations', icon: MapPin, exact: false },
+  { to: '/admin/hall-of-fame', label: 'Hall of Fame', icon: Award, exact: false },
+  { to: '/admin/daughter-pictures', label: 'Team Pictures', icon: Bot, exact: false },
+  { to: '/admin/assets', label: 'Assets Area', icon: FolderOpen, exact: false },
   { to: '/admin/token-settings', label: 'Token Settings', icon: Coins, exact: false },
   { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp, exact: false },
   { to: '/admin/broadcast', label: 'Broadcast', icon: Bell, exact: false },
-  { to: '/admin/ambassadors', label: 'Ambassadors', icon: Bot, exact: false },
+  { to: '/admin/ambassadors', label: 'AI Ambassadors', icon: Bot, exact: false },
+  { to: '/admin/public-ambassadors', label: 'PH Ambassadors', icon: Award, exact: false },
   { to: '/admin/banners', label: 'Banners', icon: Image, exact: false },
   { to: '/admin/sbi-ads', label: 'SBI Ads', icon: Landmark, exact: false },
   { to: '/admin/live-events', label: 'LIVE Events', icon: Video, exact: false },

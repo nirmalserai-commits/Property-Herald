@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { Notification } from '../types/database';
 import { AmbassadorWidget } from './AmbassadorWidget';
-import { Home, Building2, BookOpen, Users, LogIn, LogOut, Menu, X, Sparkles, ChevronDown, MapPin, Mail, Instagram, MessageCircle, Linkedin, Shield, Info, AlertTriangle, CheckCircle, XCircle, Globe, Calculator, TrendingUp, Video, Handshake, Trophy, Gift, Heart } from 'lucide-react';
+import { Home, Building2, BookOpen, Users, LogIn, LogOut, Menu, X, Sparkles, ChevronDown, MapPin, Mail, Instagram, MessageCircle, Linkedin, Shield, Info, AlertTriangle, CheckCircle, XCircle, Globe, Calculator, TrendingUp, Video, Handshake, Trophy, Gift, Heart, Award } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
 
@@ -138,6 +138,12 @@ export function Navbar() {
               <BookOpen className="w-4 h-4 mr-2" />Magazine
             </Link>
 
+            <Link to="/dubai" className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              isActive('/dubai') ? 'bg-gold/20 text-gold' : 'text-cream/80 hover:text-gold hover:bg-gold/10'
+            }`}>
+              <span className="mr-1">🇦🇪</span>Dubai
+            </Link>
+
             <div className="relative"
               onMouseEnter={() => setMoreOpen(true)}
               onMouseLeave={() => setMoreOpen(false)}>
@@ -161,6 +167,9 @@ export function Navbar() {
                   </Link>
                   <Link to="/partners" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
                     <Handshake className="w-3.5 h-3.5 mr-2 text-gold/50" />Partners
+                  </Link>
+                  <Link to="/ambassadors" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
+                    <Award className="w-3.5 h-3.5 mr-2 text-gold/50" />Ambassadors
                   </Link>
                   <Link to="/home-loans" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
                     <Heart className="w-3.5 h-3.5 mr-2 text-gold/50" />Home Loans
@@ -229,7 +238,11 @@ export function Navbar() {
               { path: '/live-events', label: 'LIVE Events', icon: Video },
               { path: '/market-reports', label: 'Market Reports', icon: TrendingUp },
               { path: '/partners', label: 'Partners', icon: Handshake },
+              { path: '/ambassadors', label: 'Ambassadors', icon: Award },
               { path: '/home-loans', label: 'Home Loans', icon: Heart },
+              { path: '/dubai', label: 'Dubai', icon: Building2 },
+              { path: '/hall-of-fame', label: 'Hall of Fame', icon: Award },
+              { path: '/terms', label: 'Terms', icon: Shield },
             ].map(({ path, label, icon: Icon }) => (
               <Link key={path} to={path} onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-colors ${
@@ -335,6 +348,10 @@ export function Footer() {
               {[
                 { to: '/directory', label: 'Property Directory' },
                 { to: '/magazine', label: 'Magazine' },
+                { to: '/dubai', label: 'Dubai Properties' },
+                { to: '/hall-of-fame', label: 'Hall of Fame' },
+                { to: '/founding-partner', label: 'Founding Partner' },
+                { to: '/terms', label: 'Terms & Conditions' },
                 { to: '/register', label: 'List Your Business' },
                 { to: '/login', label: 'Member Login' },
               ].map(({ to, label }) => (

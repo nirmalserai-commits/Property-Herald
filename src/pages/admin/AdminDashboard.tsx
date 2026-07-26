@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { AdminLayout } from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import { Users, Building2, Coins, ShieldCheck, TrendingUp, UserPlus, Clock, RefreshCw, Calendar, Star, ChevronDown, ChevronUp, Bot, ToggleLeft, ToggleRight, MapPin, Shield, BookOpen, Home, Globe } from 'lucide-react';
+import { EmergencyControls } from '../../components/EmergencyControls';
 
 interface Metrics {
   totalUsers: number;
@@ -67,7 +68,7 @@ interface NGirl {
   assignment_rules: Record<string, unknown>;
 }
 
-type Tab = 'overview' | 'buyers' | 'bookings' | 'intent' | 'ngirls';
+type Tab = 'overview' | 'buyers' | 'bookings' | 'intent' | 'ngirls' | 'emergency';
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -253,6 +254,7 @@ export function AdminDashboard() {
     { id: 'bookings', label: `Bookings${metrics ? ` (${metrics.totalBookings})` : ''}` },
     { id: 'intent', label: 'Intent Leaders' },
     { id: 'ngirls', label: 'N-Girls Control' },
+    { id: 'emergency', label: 'Emergency' },
   ];
 
   return (
@@ -283,6 +285,9 @@ export function AdminDashboard() {
             </button>
           ))}
         </div>
+
+        {/* Emergency tab */}
+        {tab === 'emergency' && <EmergencyControls />}
 
         {/* Overview tab */}
         {tab === 'overview' && (

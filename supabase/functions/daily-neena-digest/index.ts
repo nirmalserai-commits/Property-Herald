@@ -95,12 +95,43 @@ function toBase64(str: string): string {
   return btoa(binary);
 }
 
+async function getResendApiKey(supabaseUrl: string, serviceKey: string): Promise<string | null> {
+  // Try environment variable first (set via Supabase secrets management)
+  const envKey = Deno.env.get("RESEND_API_KEY");
+  if (envKey) return envKey;
+
+  // Fall back to vault secret stored in the database
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/get_vault_secret`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ secret_name: "RESEND_API_KEY" }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === "string" && data.length > 0) return data;
+    }
+  } catch {
+    // vault read failed
+  }
+  return null;
+}
+
 async function sendEmail(
   markdown: string,
   filename: string,
   messageCount: number,
+  supabaseUrl: string,
+  serviceKey: string,
 ): Promise<{ id?: string; skipped?: boolean; error?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const apiKey = await getResendApiKey(supabaseUrl, serviceKey);
   if (!apiKey) {
     return { skipped: true };
   }
@@ -194,7 +225,7 @@ Deno.serve(async (req: Request) => {
     const filename = `neena-backup-${dateStampIST(runDate)}.md`;
     const markdown = buildMarkdown(rows, runDate);
 
-    const result = await sendEmail(markdown, filename, rows.length);
+    const result = await sendEmail(markdown, filename, rows.length, SUPABASE_URL, SUPABASE_SERVICE_KEY);
     if (result.error) {
       return await fail(result.error);
     }

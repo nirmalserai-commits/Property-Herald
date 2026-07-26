@@ -1,3 +1,19 @@
+export type Persona = 'neena' | 'nora' | 'nita';
+
+export type PublicAmbassadorType = 'developer' | 'agent' | 'community';
+
+export interface PublicAmbassador {
+  id: string;
+  name: string;
+  city_region: string;
+  ambassador_type: PublicAmbassadorType;
+  profile_picture_url: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type BusinessType = 'developer' | 'agency' | 'agent';
 export type ModerationStatus = 'pending' | 'approved' | 'rejected' | 'flagged';
 export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected';
@@ -69,6 +85,13 @@ export interface Listing {
   moderation_reason: string | null;
   featured_expires_at: string | null;
   hot_expires_at: string | null;
+  is_dubai?: boolean;
+  ownership_type?: string | null;
+  escrow_account_status?: string | null;
+  trade_licence_number?: string | null;
+  emirates_id?: string | null;
+  size_sqft?: number | null;
+  approval_level?: string | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -466,4 +489,149 @@ export interface ShowApartmentBooking {
   created_at: string;
   updated_at: string;
   listing?: Listing;
+}
+
+// Dossier 5 types
+
+export interface Locality {
+  id: string;
+  city_id: string;
+  name: string;
+  state: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  submitted_by: string | null;
+  verified_by: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  city?: City;
+}
+
+export interface HallOfFame {
+  id: string;
+  name: string;
+  job_title: string;
+  position: string | null;
+  pod_name: string | null;
+  profile_picture_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface NakshaReport {
+  id: string;
+  locality_id: string | null;
+  report_data: Record<string, unknown> | null;
+  generated_at: string;
+  purchased_by: string;
+  payment_method: 'tokens' | 'upi' | 'razorpay';
+  tokens_charged: number;
+  amount_charged: number;
+  payment_confirmed: boolean;
+  created_at: string;
+}
+
+export interface ConversationMemory {
+  id: string;
+  user_id: string;
+  daughter_name: 'nora' | 'nita' | 'neena';
+  summary_text: string | null;
+  last_updated: string;
+  message_count: number;
+}
+
+export interface CrmLead {
+  id: string;
+  developer_id: string;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  buyer_phone: string | null;
+  source: 'nora' | 'direct_enquiry' | 'whatsapp_click' | 'call_click' | 'banner_click' | 'walk_in' | 'manual';
+  listing_id: string | null;
+  nora_conversation_summary: string | null;
+  intent_score: number;
+  lead_quality: 'hot' | 'warm' | 'cold' | null;
+  status: 'new' | 'contacted' | 'site_visit_scheduled' | 'site_visit_done' | 'negotiating' | 'converted' | 'lost';
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrmInteraction {
+  id: string;
+  lead_id: string;
+  interaction_type: string | null;
+  interaction_notes: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface CrmFollowUp {
+  id: string;
+  lead_id: string;
+  reminder_date: string | null;
+  reminder_note: string | null;
+  is_completed: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface GreetingsVoucher {
+  id: string;
+  developer_id: string;
+  voucher_type: 'birthday' | 'diwali' | 'ganpati' | 'independence_day' | 'eid' | 'christmas' | 'new_year' | 'developer_anniversary' | 'new_project_launch' | 'custom';
+  custom_message: string | null;
+  discount_value: string | null;
+  recipient_count: number;
+  tokens_charged: number;
+  delivery_region: 'india' | 'dubai';
+  delivery_report: Record<string, unknown> | null;
+  status: string;
+  created_at: string;
+}
+
+export interface Registration {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string;
+  role: 'developer' | 'real_estate_agency' | 'individual_agent' | 'buyer' | null;
+  city: string | null;
+  agree_updates: boolean;
+  status: string;
+  approved_at: string | null;
+  created_at: string;
+}
+
+export interface SiteFlag {
+  id: string;
+  flag_name: string;
+  flag_value: boolean;
+  updated_at: string;
+}
+
+export interface NeighbourhoodData {
+  id: string;
+  locality_id: string;
+  overview: Record<string, unknown> | null;
+  connectivity: Record<string, unknown> | null;
+  social_infrastructure: Record<string, unknown> | null;
+  lifestyle: Record<string, unknown> | null;
+  places_of_worship: Record<string, unknown> | null;
+  infrastructure_rating: string | null;
+  connectivity_score: number | null;
+  naksha_verdict: string | null;
+  updated_at: string;
+}
+
+export interface DaughterPicture {
+  id: string;
+  daughter_name: string;
+  display_name: string;
+  pod_title: string;
+  profile_picture_url: string | null;
+  display_order: number;
+  is_active: boolean;
+  updated_at: string;
 }
