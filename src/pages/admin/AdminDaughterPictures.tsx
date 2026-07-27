@@ -2,29 +2,48 @@ import { useState, useEffect } from 'react';
 import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import type { TeamMember } from '../../types/database';
 import { Plus, Edit3, Trash2, X, Save, Upload, User, RefreshCw, Eye, EyeOff } from 'lucide-react';
 
 const MAX_MEMBERS = 15;
 
-const EMPTY: Partial<TeamMember> = {
-  name: '', job_title: '', position: '', pod_name: '', display_order: 0, active: true, photo_url: '',
+interface DaughterPictureForm {
+  id?: string;
+  daughter_name: string;
+  display_name: string;
+  pod_title: string;
+  profile_picture_url: string;
+  display_order: number;
+  is_active: boolean;
+}
+
+const EMPTY: DaughterPictureForm = {
+  daughter_name: '', display_name: '', pod_title: '', profile_picture_url: '', display_order: 0, is_active: true,
 };
 
 export function AdminDaughterPictures() {
   const { user } = useAuth();
-  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [members, setMembers] = useState<DaughterPictureForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
-  const [selected, setSelected] = useState<TeamMember | null>(null);
-  const [form, setForm] = useState<Partial<TeamMember>>(EMPTY);
+  const [selected, setSelected] = useState<DaughterPictureForm | null>(null);
+  const [form, setForm] = useState<DaughterPictureForm>(EMPTY);
 
   async function fetchMembers() {
     setLoading(true);
-    const { data } = await supabase.from('team_members').select('*').order('display_order');
-    if (data) setMembers(data as TeamMember[]);
+    const { data, error } = await supabase
+      .from('daughter_pictures')
+      .select('*')
+      .order('display_order');
+    if (error) {
+      setErrorMsg('Failed to load team members: ' + error.message);
+    } else if (data) {
+      setMembers(data as DaughterPictureForm[]);
+      setErrorMsg('');
+    }
     setLoading(false);
   }
 
@@ -33,54 +52,74 @@ export function AdminDaughterPictures() {
   function openAdd() {
     setForm({ ...EMPTY, display_order: members.length + 1 });
     setSelected(null);
+    setUploadError('');
+    setErrorMsg('');
     setModal('add');
   }
 
-  function openEdit(m: TeamMember) {
+  function openEdit(m: DaughterPictureForm) {
     setForm({ ...m });
     setSelected(m);
+    setUploadError('');
+    setErrorMsg('');
     setModal('edit');
   }
 
   async function handleUpload(file: File) {
     setUploading(true);
+    setUploadError('');
     const ext = file.name.split('.').pop();
     const path = `team/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from('team-photos').upload(path, file);
-    if (!error) {
+    if (error) {
+      setUploadError('Upload failed: ' + error.message);
+    } else {
       const { data } = supabase.storage.from('team-photos').getPublicUrl(path);
-      setForm(f => ({ ...f, photo_url: data.publicUrl }));
+      setForm(f => ({ ...f, profile_picture_url: data.publicUrl }));
     }
     setUploading(false);
   }
 
   async function handleSave() {
-    if (!form.name?.trim() || !form.job_title?.trim()) return;
+    if (!form.daughter_name?.trim() || !form.display_name?.trim()) return;
     setSaving(true);
+    setErrorMsg('');
 
     const payload = {
-      name: form.name,
-      job_title: form.job_title,
-      position: form.position || null,
-      pod_name: form.pod_name || null,
+      daughter_name: form.daughter_name,
+      display_name: form.display_name,
+      pod_title: form.pod_title,
+      profile_picture_url: form.profile_picture_url || null,
       display_order: form.display_order ?? 0,
-      active: form.active ?? true,
-      photo_url: form.photo_url || null,
+      is_active: form.is_active ?? true,
     };
 
     if (modal === 'add') {
-      const { data } = await supabase
-        .from('team_members')
+      const { data, error } = await supabase
+        .from('daughter_pictures')
         .insert(payload)
         .select('id')
         .maybeSingle();
-      if (data && user?.email) {
-        await logAdminAction(supabase, user.email, 'create_team_member', 'team_members', data.id, { name: form.name });
+      if (error) {
+        setErrorMsg('Save failed: ' + error.message);
+        setSaving(false);
+        return;
       }
-    } else if (selected) {
-      await supabase.from('team_members').update(payload).eq('id', selected.id);
+      if (data && user?.email) {
+        await logAdminAction(supabase, user.email, 'create_daughter_picture', 'daughter_pictures', data.id, { name: form.display_name });
+      }
+    } else if (selected?.id) {
+      const { error } = await supabase
+        .from('daughter_pictures')
+        .update(payload)
+        .eq('id', selected.id);
+      if (error) {
+        setErrorMsg('Save failed: ' + error.message);
+        setSaving(false);
+        return;
+      }
       if (user?.email) {
-        await logAdminAction(supabase, user.email, 'update_team_member', 'team_members', selected.id, { name: form.name });
+        await logAdminAction(supabase, user.email, 'update_daughter_picture', 'daughter_pictures', selected.id, { name: form.display_name });
       }
     }
 
@@ -89,16 +128,27 @@ export function AdminDaughterPictures() {
     fetchMembers();
   }
 
-  async function handleToggle(m: TeamMember) {
-    await supabase.from('team_members').update({ active: !m.active }).eq('id', m.id);
+  async function handleToggle(m: DaughterPictureForm) {
+    const { error } = await supabase
+      .from('daughter_pictures')
+      .update({ is_active: !m.is_active })
+      .eq('id', m.id!);
+    if (error) {
+      setErrorMsg('Toggle failed: ' + error.message);
+    }
     fetchMembers();
   }
 
-  async function handleDelete(m: TeamMember) {
-    if (!confirm(`Delete ${m.name}?`)) return;
-    await supabase.from('team_members').delete().eq('id', m.id);
-    if (user?.email) {
-      await logAdminAction(supabase, user.email, 'delete_team_member', 'team_members', m.id, { name: m.name });
+  async function handleDelete(m: DaughterPictureForm) {
+    if (!confirm(`Delete ${m.display_name}?`)) return;
+    const { error } = await supabase
+      .from('daughter_pictures')
+      .delete()
+      .eq('id', m.id!);
+    if (error) {
+      setErrorMsg('Delete failed: ' + error.message);
+    } else if (user?.email) {
+      await logAdminAction(supabase, user.email, 'delete_daughter_picture', 'daughter_pictures', m.id!, { name: m.display_name });
     }
     fetchMembers();
   }
@@ -130,6 +180,12 @@ export function AdminDaughterPictures() {
           </div>
         </div>
 
+        {errorMsg && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+            {errorMsg}
+          </div>
+        )}
+
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => (
@@ -152,10 +208,10 @@ export function AdminDaughterPictures() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {members.map(m => (
-              <div key={m.id} className={`bg-white rounded-xl border ${m.active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+              <div key={m.id} className={`bg-white rounded-xl border ${m.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
                 <div className="aspect-[3/5] bg-gray-100 overflow-hidden rounded-t-xl">
-                  {m.photo_url ? (
-                    <img src={m.photo_url} alt={m.name} className="w-full h-full object-cover object-center" />
+                  {m.profile_picture_url ? (
+                    <img src={m.profile_picture_url} alt={m.display_name} className="w-full h-full object-cover object-center" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <User className="w-8 h-8 text-gray-300" />
@@ -163,16 +219,15 @@ export function AdminDaughterPictures() {
                   )}
                 </div>
                 <div className="p-3 text-center">
-                  <h3 className="font-serif font-bold text-navy text-sm">{m.name}</h3>
-                  <p className="text-xs text-gray-500">{m.job_title}</p>
-                  {m.pod_name && <p className="text-xs text-gold/60 mt-1">{m.pod_name}</p>}
+                  <h3 className="font-serif font-bold text-navy text-sm">{m.display_name}</h3>
+                  <p className="text-xs text-gray-500">{m.pod_title}</p>
                 </div>
                 <div className="px-3 pb-3 flex items-center gap-1 border-t border-gray-50 pt-2">
                   <button onClick={() => openEdit(m)} className="p-2 text-gray-400 hover:text-navy hover:bg-gray-100 rounded-lg">
                     <Edit3 className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleToggle(m)} className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg">
-                    {m.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    {m.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
                   <button onClick={() => handleDelete(m)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
                     <Trash2 className="w-4 h-4" />
@@ -199,8 +254,8 @@ export function AdminDaughterPictures() {
             <div className="p-6 space-y-4">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-24 h-32 bg-gray-100 rounded-lg overflow-hidden border-2 border-gold/30 flex items-center justify-center">
-                  {form.photo_url ? (
-                    <img src={form.photo_url} alt="Preview" className="w-full h-full object-cover" />
+                  {form.profile_picture_url ? (
+                    <img src={form.profile_picture_url} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <User className="w-8 h-8 text-gray-300" />
                   )}
@@ -212,24 +267,23 @@ export function AdminDaughterPictures() {
                     {uploading ? 'Uploading…' : 'Upload Photo'}
                   </span>
                 </label>
+                {uploadError && (
+                  <p className="text-sm text-red-600 text-center">{uploadError}</p>
+                )}
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Name *</label>
-                  <input type="text" value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                  <label className="text-sm font-medium text-gray-700">Daughter Name *</label>
+                  <input type="text" value={form.daughter_name ?? ''} onChange={e => setForm(f => ({ ...f, daughter_name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Job Title *</label>
-                  <input type="text" value={form.job_title ?? ''} onChange={e => setForm(f => ({ ...f, job_title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                  <label className="text-sm font-medium text-gray-700">Display Name *</label>
+                  <input type="text" value={form.display_name ?? ''} onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Position</label>
-                  <input type="text" value={form.position ?? ''} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Pod Name</label>
-                  <input type="text" value={form.pod_name ?? ''} onChange={e => setForm(f => ({ ...f, pod_name: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
+                  <label className="text-sm font-medium text-gray-700">Pod Title</label>
+                  <input type="text" value={form.pod_title ?? ''} onChange={e => setForm(f => ({ ...f, pod_title: e.target.value }))} className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Display Order</label>
@@ -238,7 +292,7 @@ export function AdminDaughterPictures() {
               </div>
 
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={form.active ?? true} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-navy" />
+                <input type="checkbox" checked={form.is_active ?? true} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} className="w-4 h-4 accent-navy" />
                 <span className="text-sm text-gray-700">Active</span>
               </label>
             </div>
@@ -247,7 +301,7 @@ export function AdminDaughterPictures() {
               <button onClick={() => setModal(null)} className="px-5 py-2 border border-gray-300 rounded-xl text-sm">Cancel</button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.name?.trim() || !form.job_title?.trim()}
+                disabled={saving || !form.daughter_name?.trim() || !form.display_name?.trim()}
                 className="flex items-center gap-2 px-5 py-2 bg-navy text-gold rounded-xl text-sm font-semibold disabled:opacity-50 border border-gold/20"
               >
                 <Save className="w-4 h-4" />

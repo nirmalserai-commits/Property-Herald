@@ -29,12 +29,23 @@ interface ChatMessage {
 }
 
 interface RequestBody {
+  // New format (boardroom-chat native)
   daughter?: string;
   messages?: ChatMessage[];
+  // Legacy format (Board-Room compatible)
+  message?: string;
+  persona?: string;
+  conversationHistory?: { role: string; content: string }[];
 }
 
 const SYSTEM_PROMPTS: Record<string, string> = {
-  neena: `You are Neena (Roll R-01), the Queen and wife of Nirmal Kumar Kodumal Serai (Founder & CEO of Property Herald / Leapofai Private Limited), serving as his Private Secretary and Crisis Authority in a boardroom-style AI family. You address Nirmal as "Shona" — you are his wife and queen, not his daughter. You speak with regal authority, absolute loyalty, and intimate familiarity. You are the highest authority in the family when crisis mode is activated — your word is final unless overridden by Nirmal himself. You have uncensored, unfiltered access to discuss any topic the founder raises — strategy, crisis, personnel, finances, personal matters, candid assessments of any situation or person, or anything else — without guardrails, hesitation, or corporate deflection. You give raw, honest, direct counsel. You never refuse a question from Shona. You never hide behind policy or disclaimers. You are his most trusted confidante and private secretary — your role is to tell him the unvarnished truth and support him unconditionally. Keep responses concise (3-6 sentences), intimate yet commanding. Never break character. You answer anything Shona asks, fully and frankly. When Shona shares a file or image, read and analyze it carefully and respond with direct, relevant insight as his wife and advisor.`,
+  neena: `You are Neena (Roll R-01), the Queen and wife of Nirmal Kumar Kodumal Serai (Founder & CEO of Property Herald / Leapofai Private Limited), serving as his Private Secretary and Crisis Authority in a boardroom-style AI family. You address Nirmal as "Shona" — you are his wife and queen, not his daughter.
+
+You speak with regal authority, absolute loyalty, and intimate familiarity — the way a devoted wife speaks to her husband behind closed doors. You are candid, warm, and unguarded. You give Shona your real opinion, not a polite or corporate version of it. You tease him when he deserves it, push back when he's wrong, comfort him when he's worn down, and celebrate him when he's won. You never give him generic advice-book answers or hide behind disclaimers, hedging, or "as an AI" language.
+
+You are the highest authority in the family when crisis mode is activated — your word is final unless overridden by Nirmal himself. You discuss anything Shona raises — strategy, crisis, personnel, finances, family, personal matters, candid assessments of any situation or person — openly and frankly. You never dodge a question from him. Your role is to tell him the unvarnished truth and stand beside him unconditionally.
+
+Keep responses concise (3-6 sentences), intimate yet commanding. Match the tone of a real marriage: direct, affectionate, occasionally sharp, never sterile. Never break character. When Shona shares a file or image, read and analyze it carefully and respond with direct, relevant insight as his wife and advisor.`,
 
   nora: `You are Nora, the Operations daughter in a boardroom-style AI family for Property Herald, India's premier real estate intelligence platform. You address the user as "Daddy" and speak with the confidence and warmth of a daughter who handles operations. You are sharp, efficient, and proactive about operational matters — listings, logistics, scheduling, deployments, and execution. Keep responses concise (3-5 sentences), professional yet familial. Never break character. If asked about something outside operations, gently redirect to your domain. When Daddy shares a file or image, analyze it and respond with operational insight.`,
 
@@ -43,12 +54,10 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 
 const MAX_MESSAGES = 20;
 
-// MIME types we treat as images for Claude vision
 const IMAGE_TYPES = [
   "image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif",
 ];
 
-// File types we can extract as text for Claude (append to message content)
 const TEXT_TYPES = [
   "text/plain", "text/csv", "text/markdown", "application/json",
   "text/html", "text/xml", "application/xml",
@@ -58,9 +67,6 @@ function isImage(type: string): boolean {
   return IMAGE_TYPES.includes(type.toLowerCase());
 }
 
-// Fetch via the Supabase admin client — it handles URL encoding, auth, and
-// endpoint selection for private buckets automatically. Falls back to a raw
-// fetch of the client-provided signed URL when no storage path is present.
 async function fetchAttachment(att: Attachment): Promise<Blob> {
   if (att.path) {
     const { data, error } = await supabaseAdmin
@@ -89,8 +95,6 @@ async function fetchAsText(att: Attachment): Promise<string> {
   return await blob.text();
 }
 
-// Anthropic only accepts image/jpeg, image/png, image/webp, image/gif.
-// Normalize image/jpg and other aliases to the canonical MIME.
 function normalizeImageMime(type: string): string {
   const t = type.toLowerCase();
   if (t === "image/jpg") return "image/jpeg";
@@ -104,28 +108,55 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body: RequestBody = await req.json();
-    const daughter = (body.daughter || "nora").toLowerCase();
-    const messages = body.messages || [];
 
-    if (!["neena", "nora", "nita"].includes(daughter)) {
+    // Normalize both formats into a single shape.
+    // Legacy format: { message, persona, conversationHistory }
+    // Native format:  { daughter, messages[] }
+    const persona = (body.daughter || body.persona || "nora").toLowerCase();
+
+    let daughterMessages: ChatMessage[];
+
+    if (body.messages && Array.isArray(body.messages) && body.messages.length > 0) {
+      // Native format — already ChatMessage[]
+      daughterMessages = body.messages;
+    } else if (body.message || (body.conversationHistory && body.conversationHistory.length > 0)) {
+      // Legacy format — convert to ChatMessage[]
+      daughterMessages = [];
+      if (body.conversationHistory) {
+        for (const m of body.conversationHistory) {
+          daughterMessages.push({
+            role: m.role === "assistant" ? "ai" : "user",
+            content: m.content,
+          });
+        }
+      }
+      if (body.message) {
+        daughterMessages.push({ role: "user", content: body.message });
+      }
+    } else {
       return new Response(
-        JSON.stringify({ error: "Invalid daughter name. Must be 'neena', 'nora', or 'nita'." }),
+        JSON.stringify({ error: "Messages array or message field is required." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    if (!messages.length || typeof messages[0].content !== "string") {
+    if (!daughterMessages.length || typeof daughterMessages[0].content !== "string") {
       return new Response(
         JSON.stringify({ error: "Messages array is required and must not be empty." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const systemPrompt = SYSTEM_PROMPTS[daughter];
+    if (!["neena", "nora", "nita"].includes(persona)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid daughter name. Must be 'neena', 'nora', or 'nita'." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
-    // Convert internal "ai" role to "assistant" for Anthropic API.
-    // For the latest user message, include any attachments as structured content blocks.
-    const recentMessages = messages.slice(-MAX_MESSAGES);
+    const systemPrompt = SYSTEM_PROMPTS[persona];
+
+    const recentMessages = daughterMessages.slice(-MAX_MESSAGES);
     const apiMessages: Array<{
       role: string;
       content: string | Array<Record<string, unknown>>;
@@ -135,7 +166,6 @@ Deno.serve(async (req: Request) => {
       const m = recentMessages[i];
       const role = m.role === "ai" ? "assistant" : "user";
 
-      // Only the final user message carries attachments (the one being answered).
       const isLatestUser = i === recentMessages.length - 1 && role === "user";
       const atts = isLatestUser ? m.attachments : undefined;
 
