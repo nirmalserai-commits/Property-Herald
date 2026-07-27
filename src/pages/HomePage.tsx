@@ -326,14 +326,14 @@ export function HomePage() {
               <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
                 <div className="w-16 h-16 rounded-full border-2 border-gold/30 overflow-hidden bg-gray-100 mx-auto mb-3 flex items-center justify-center">
                   {d.profile_picture_url ? (
-                    <img src={d.profile_picture_url} alt={d.display_name} className="w-full h-full object-cover" />
+                    <img src={d.profile_picture_url} alt={d.display_name} className="w-full h-full object-cover" style={{ objectPosition: 'top center' }} />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
                       <span className="text-xl font-serif font-bold text-navy/30">{d.display_name?.charAt(0) ?? ''}</span>
                     </div>
                   )}
                 </div>
-                <h3 className="font-serif font-bold text-navy text-sm">{d.display_name}</h3>
+                <h3 className="font-serif font-bold text-navy text-sm">{d.daughter_name || d.display_name}</h3>
                 <p className="text-xs text-gold mt-0.5">{d.pod_title}</p>
               </div>
             )) : (
