@@ -73,13 +73,13 @@ function MeetOurTeam() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="text-2xl font-serif font-bold text-navy/30">
-                      {d.display_name.charAt(0)}
+                      {d.display_name?.charAt(0) ?? ''}
                     </span>
                   </div>
                 )}
               </div>
               <h3 className="font-serif font-bold text-navy text-sm text-center capitalize">
-                {d.daughter_name}
+                {d.daughter_name ?? ''}
               </h3>
               <p className="text-xs text-gold mt-0.5 text-center">{d.display_name}</p>
             </div>
@@ -100,65 +100,78 @@ export function HomePage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function fetchData() {
-      const [
-        { data: citiesData },
-        { data: magazinesData },
-        { count: cityCount },
-        { count: memberCount },
-        { data: siteConfigData },
-        { data: allCitiesForCorridors },
-        { data: listingCityData },
-        { data: daughterData },
-      ] = await Promise.all([
-        supabase.from('cities').select('*').order('name'),
-        supabase.from('magazines').select('*').eq('is_published', true).order('issue_number', { ascending: false }).limit(3),
-        supabase.from('cities').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('site_config').select('key, value').in('key', ['magazine_readers']),
-        supabase.from('cities').select('id, state'),
-        supabase.from('listings').select('city_id').eq('is_active', true),
-        supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order'),
-      ]);
-
-      if (citiesData) setCities(citiesData as City[]);
-      if (magazinesData) setRecentMagazines(magazinesData as Magazine[]);
-      if (daughterData) setDaughters(daughterData as DaughterPicture[]);
-
-      const magazineReaders = (siteConfigData ?? []).find((c: { key: string; value: string }) => c.key === 'magazine_readers')?.value ?? null;
-
-      // Try whatsapp_leads table for inquiry count
-      let inquiryCount: number | null = null;
+    async function safe<T>(p: Promise<{ data: T | null; error: unknown; count?: number | null }>): Promise<{ data: T | null; count: number | null }> {
       try {
-        const { count, error } = await supabase.from('whatsapp_leads').select('*', { count: 'exact', head: true });
-        if (!error) inquiryCount = count;
+        const r = await p;
+        return { data: r.data, count: r.count ?? null };
       } catch {
-        inquiryCount = null;
+        return { data: null, count: null };
       }
+    }
 
-      setStats({
-        cities: cityCount ?? 0,
-        members: memberCount ?? 0,
-        magazineReaders: magazineReaders ? Number(magazineReaders).toLocaleString('en-IN') + '+' : null,
-        inquiries: inquiryCount,
-      });
+    async function fetchData() {
+      try {
+        const [
+          citiesRes,
+          magazinesRes,
+          cityCountRes,
+          memberCountRes,
+          siteConfigRes,
+          corridorCitiesRes,
+          listingCityRes,
+          daughterRes,
+        ] = await Promise.all([
+          safe<City[]>(supabase.from('cities').select('*').order('name')),
+          safe<Magazine[]>(supabase.from('magazines').select('*').eq('is_published', true).order('issue_number', { ascending: false }).limit(3)),
+          safe<unknown>(supabase.from('cities').select('*', { count: 'exact', head: true })),
+          safe<unknown>(supabase.from('profiles').select('*', { count: 'exact', head: true })),
+          safe<{ key: string; value: string }[]>(supabase.from('site_config').select('key, value').in('key', ['magazine_readers'])),
+          safe<{ id: string; state: string }[]>(supabase.from('cities').select('id, state')),
+          safe<{ city_id: string }[]>(supabase.from('listings').select('city_id').eq('is_active', true)),
+          safe<DaughterPicture[]>(supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order')),
+        ]);
 
-      // Compute corridor counts from all active listings
-      if (allCitiesForCorridors && listingCityData) {
-        const cityStateMap: Record<string, string> = {};
-        for (const c of (allCitiesForCorridors as { id: string; state: string }[])) {
-          cityStateMap[c.id] = c.state;
+        if (citiesRes.data) setCities(citiesRes.data);
+        if (magazinesRes.data) setRecentMagazines(magazinesRes.data);
+        if (daughterRes.data) setDaughters(daughterRes.data);
+
+        const magazineReaders = (siteConfigRes.data ?? []).find((c) => c.key === 'magazine_readers')?.value ?? null;
+
+        // Try whatsapp_leads table for inquiry count
+        let inquiryCount: number | null = null;
+        try {
+          const { count, error } = await supabase.from('whatsapp_leads').select('*', { count: 'exact', head: true });
+          if (!error) inquiryCount = count;
+        } catch {
+          inquiryCount = null;
         }
-        const ld = listingCityData as { city_id: string }[];
-        setCorridorCounts({
-          maharashtra: ld.filter(l => cityStateMap[l.city_id] === 'Maharashtra').length,
-          gujarat:     ld.filter(l => cityStateMap[l.city_id] === 'Gujarat').length,
-          ncr:         ld.filter(l => ['Delhi', 'Haryana', 'Uttar Pradesh'].includes(cityStateMap[l.city_id])).length,
-          karnataka:   ld.filter(l => cityStateMap[l.city_id] === 'Karnataka').length,
-        });
-      }
 
-      setLoading(false);
+        setStats({
+          cities: cityCountRes.count ?? 0,
+          members: memberCountRes.count ?? 0,
+          magazineReaders: magazineReaders ? Number(magazineReaders).toLocaleString('en-IN') + '+' : null,
+          inquiries: inquiryCount,
+        });
+
+        // Compute corridor counts from all active listings
+        if (corridorCitiesRes.data && listingCityRes.data) {
+          const cityStateMap: Record<string, string> = {};
+          for (const c of corridorCitiesRes.data) {
+            cityStateMap[c.id] = c.state;
+          }
+          const ld = listingCityRes.data;
+          setCorridorCounts({
+            maharashtra: ld.filter(l => cityStateMap[l.city_id] === 'Maharashtra').length,
+            gujarat:     ld.filter(l => cityStateMap[l.city_id] === 'Gujarat').length,
+            ncr:         ld.filter(l => ['Delhi', 'Haryana', 'Uttar Pradesh'].includes(cityStateMap[l.city_id])).length,
+            karnataka:   ld.filter(l => cityStateMap[l.city_id] === 'Karnataka').length,
+          });
+        }
+
+        setLoading(false);
+      } catch {
+        setLoading(false);
+      }
     }
     fetchData();
   }, []);
@@ -316,7 +329,7 @@ export function HomePage() {
                     <img src={d.profile_picture_url} alt={d.display_name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
-                      <span className="text-xl font-serif font-bold text-navy/30">{d.display_name.charAt(0)}</span>
+                      <span className="text-xl font-serif font-bold text-navy/30">{d.display_name?.charAt(0) ?? ''}</span>
                     </div>
                   )}
                 </div>
@@ -344,7 +357,7 @@ export function HomePage() {
               ].map((d, i) => (
                 <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
                   <div className="w-16 h-16 rounded-full border-2 border-gold/30 bg-gray-100 mx-auto mb-3 flex items-center justify-center">
-                    <span className="text-xl font-serif font-bold text-navy/30">{d.name.charAt(0)}</span>
+                    <span className="text-xl font-serif font-bold text-navy/30">{d.name?.charAt(0) ?? ''}</span>
                   </div>
                   <h3 className="font-serif font-bold text-navy text-sm">{d.name}</h3>
                   <p className="text-xs text-gold mt-0.5">{d.pod}</p>
