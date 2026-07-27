@@ -2,11 +2,10 @@
 // Strategy: cache the app shell on install, serve from cache when the network
 // fails (so the installed app opens even if the Bolt-hosted site is down),
 // and always try the network first for navigation + API/storage requests.
-const SHELL_CACHE = 'boardroom-shell-v1';
+const SHELL_CACHE = 'boardroom-shell-v3';
 const SHELL_ASSETS = [
   '/boardroom',
   '/',
-  '/index.html',
   '/logo.png.png',
   '/manifest.webmanifest',
 ];
