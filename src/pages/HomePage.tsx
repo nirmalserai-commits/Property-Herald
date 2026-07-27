@@ -1,16 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-import type { City, Magazine, DaughterPicture, TeamMember } from '../types/database';
+import type { City, Magazine, DaughterPicture } from '../types/database';
 import {
   Building2, Users, BookOpen, ArrowRight, MapPin,
   TrendingUp, Sparkles, Check, Bot, ChevronDown,
   Globe, Zap, Award, MessageCircle, Sparkle, Handshake, User,
-  Plus, X, Upload as UploadIcon,
 } from 'lucide-react';
-
-const ADMIN_EMAIL = 'nirmalserai@gmail.com';
 
 interface LiveStats {
   cities: number | null;
@@ -26,58 +22,24 @@ interface CorridorCounts {
   karnataka: number;
 }
 
-// ─── Meet Our Team (dynamic from team_members table) ───
+// ─── Meet Our Team (dynamic from daughter_pictures table) ───
 
 function MeetOurTeam() {
-  const { user } = useAuth();
-  const isAdmin = user?.email === ADMIN_EMAIL;
-  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [daughters, setDaughters] = useState<DaughterPicture[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  async function fetchMembers() {
-    const { data } = await supabase.from('team_members').select('*').eq('active', true).order('display_order');
-    if (data) setMembers(data as TeamMember[]);
-    setLoading(false);
-  }
-
-  useEffect(() => { fetchMembers(); }, []);
-
-  function resetForm() {
-    setName(''); setRole(''); setPhoto(null); setFormError(null);
-  }
-
-  async function handleAdd() {
-    setFormError(null);
-    if (!name.trim()) { setFormError('Please enter a name.'); return; }
-    setSaving(true);
-
-    let photoUrl: string | null = null;
-    if (photo) {
-      const safeName = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `team/${safeName}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('team-photos').upload(path, photo, { cacheControl: '3600', upsert: false });
-      if (upErr) { setFormError(`Photo upload failed: ${upErr.message}`); setSaving(false); return; }
-      photoUrl = supabase.storage.from('team-photos').getPublicUrl(path).data.publicUrl;
+  useEffect(() => {
+    async function fetchDaughters() {
+      const { data } = await supabase
+        .from('daughter_pictures')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order');
+      if (data) setDaughters(data as DaughterPicture[]);
+      setLoading(false);
     }
-
-    const nextOrder = members.length + 1;
-    const { error: insErr } = await supabase.from('team_members').insert({
-      name: name.trim(), job_title: role.trim() || null, display_order: nextOrder, active: true, photo_url: photoUrl,
-    });
-    if (insErr) { setFormError(`Save failed: ${insErr.message}`); setSaving(false); return; }
-
-    await fetchMembers();
-    resetForm();
-    setShowForm(false);
-    setSaving(false);
-  }
+    fetchDaughters();
+  }, []);
 
   return (
     <section className="py-16 bg-gradient-to-b from-cream to-white">
@@ -89,83 +51,40 @@ function MeetOurTeam() {
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our Team</h2>
           <p className="text-warm-gray text-lg">The people building India's first AI-powered real estate platform</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-6">
           {loading ? (
-            [1,2,3,4,5].map(i => <div key={i} className="flex flex-col items-center"><div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-200 animate-pulse mb-3" /><div className="h-4 w-20 bg-gray-200 animate-pulse rounded" /></div>)
-          ) : members.map((m) => (
-            <div key={m.id} className="flex flex-col items-center group">
+            [1,2,3,4,5,6].map(i => (
+              <div key={i} className="flex flex-col items-center">
+                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-200 animate-pulse mb-3" />
+                <div className="h-4 w-20 bg-gray-200 animate-pulse rounded mb-1" />
+                <div className="h-3 w-16 bg-gray-200 animate-pulse rounded" />
+              </div>
+            ))
+          ) : daughters.map((d) => (
+            <div key={d.id} className="flex flex-col items-center group">
               <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-2 border-gold/30 overflow-hidden bg-gradient-to-br from-navy/10 to-gold/10 mb-3 transition-all group-hover:border-gold/60 group-hover:shadow-lg">
-                {m.photo_url ? (
-                  <img src={m.photo_url} alt={m.name} className="w-full h-full object-cover" />
+                {d.profile_picture_url ? (
+                  <img
+                    src={d.profile_picture_url}
+                    alt={d.display_name}
+                    className="w-full h-full object-cover"
+                    style={{ objectPosition: 'top' }}
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-10 h-10 text-navy/30" />
+                    <span className="text-2xl font-serif font-bold text-navy/30">
+                      {d.display_name.charAt(0)}
+                    </span>
                   </div>
                 )}
               </div>
-              <h3 className="font-serif font-bold text-navy text-sm text-center">{m.name}</h3>
-              {m.job_title && <p className="text-xs text-gold mt-0.5 text-center">{m.job_title}</p>}
+              <h3 className="font-serif font-bold text-navy text-sm text-center capitalize">
+                {d.daughter_name}
+              </h3>
+              <p className="text-xs text-gold mt-0.5 text-center">{d.display_name}</p>
             </div>
           ))}
         </div>
-
-        {isAdmin && (
-          <div className="text-center mt-10">
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center px-5 py-2.5 rounded-xl bg-navy text-gold font-display font-semibold text-sm shadow hover:shadow-md transition-all"
-            >
-              <Plus className="w-4 h-4 mr-2" />Add Team Member
-            </button>
-          </div>
-        )}
-
-        {showForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !saving && setShowForm(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-xl font-serif font-bold text-navy">Add Team Member</h3>
-                <button onClick={() => !saving && setShowForm(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
-              </div>
-
-              {formError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mb-4">{formError}</div>}
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)} disabled={saving}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:ring-1 focus:ring-gold outline-none" placeholder="Full name" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <input value={role} onChange={(e) => setRole(e.target.value)} disabled={saving}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gold focus:ring-1 focus:ring-gold outline-none" placeholder="e.g. Regional Manager" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
-                  <label className="flex items-center justify-center w-full border-2 border-dashed border-gray-300 rounded-lg px-3 py-4 cursor-pointer hover:border-gold/50 transition-colors">
-                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) setPhoto(f); e.currentTarget.value = ''; }}
-                      disabled={saving} />
-                    <span className="text-sm text-gray-500 flex items-center gap-2">
-                      <UploadIcon className="w-4 h-4" />
-                      {photo ? photo.name : 'Click to upload a photo'}
-                    </span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => !saving && setShowForm(false)} disabled={saving}
-                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
-                <button onClick={handleAdd} disabled={saving}
-                  className="flex-1 rounded-lg bg-navy text-gold px-4 py-2 text-sm font-semibold hover:bg-navy/90 disabled:opacity-50">
-                  {saving ? 'Saving…' : 'Save Member'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
@@ -190,6 +109,7 @@ export function HomePage() {
         { data: siteConfigData },
         { data: allCitiesForCorridors },
         { data: listingCityData },
+        { data: daughterData },
       ] = await Promise.all([
         supabase.from('cities').select('*').order('name'),
         supabase.from('magazines').select('*').eq('is_published', true).order('issue_number', { ascending: false }).limit(3),
@@ -198,12 +118,11 @@ export function HomePage() {
         supabase.from('site_config').select('key, value').in('key', ['magazine_readers']),
         supabase.from('cities').select('id, state'),
         supabase.from('listings').select('city_id').eq('is_active', true),
-      supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order'),
+        supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order'),
       ]);
 
       if (citiesData) setCities(citiesData as City[]);
       if (magazinesData) setRecentMagazines(magazinesData as Magazine[]);
-      const daughterData = arguments[7];
       if (daughterData) setDaughters(daughterData as DaughterPicture[]);
 
       const magazineReaders = (siteConfigData ?? []).find((c: { key: string; value: string }) => c.key === 'magazine_readers')?.value ?? null;

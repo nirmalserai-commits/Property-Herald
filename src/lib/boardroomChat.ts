@@ -21,7 +21,7 @@ export type ChatMsg = ChatMessage;
 export type Daughter = 'neena' | 'nora' | 'nita';
 
 const EDGE_FUNCTION_URL =
-  'https://llbbdebjvnypoxcfsajl.supabase.co/functions/v1/boardroom-chat';
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/boardroom-chat`;
 
 interface BoardRoomResponse {
   reply?: string;
