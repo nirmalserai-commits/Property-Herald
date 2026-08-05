@@ -6,6 +6,7 @@ import {
   Building2, Users, BookOpen, ArrowRight, MapPin,
   TrendingUp, Sparkles, Check, Bot, ChevronDown,
   Globe, Zap, Award, MessageCircle, Sparkle, Handshake, User,
+  Newspaper, Video, Landmark, GraduationCap,
 } from 'lucide-react';
 
 interface LiveStats {
@@ -51,36 +52,30 @@ function MeetOurTeam() {
           <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our Team</h2>
           <p className="text-warm-gray text-lg">The people building India's first AI-powered real estate platform</p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
           {loading ? (
-            [1,2,3,4,5,6].map(i => (
-              <div key={i} className="flex flex-col items-center">
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-200 animate-pulse mb-3" />
-                <div className="h-4 w-20 bg-gray-200 animate-pulse rounded mb-1" />
-                <div className="h-3 w-16 bg-gray-200 animate-pulse rounded" />
-              </div>
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 animate-pulse" style={{ aspectRatio: '3/4' }} />
             ))
           ) : daughters.map((d) => (
-            <div key={d.id} className="flex flex-col items-center group">
-              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-2 border-gold/30 overflow-hidden bg-gradient-to-br from-navy/10 to-gold/10 mb-3 transition-all group-hover:border-gold/60 group-hover:shadow-lg">
+            <div key={d.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
                 {d.profile_picture_url ? (
                   <img
                     src={d.profile_picture_url}
-                    alt={d.display_name}
+                    alt={d.daughter_name ?? ''}
                     className="w-full h-full object-cover"
-                    style={{ objectPosition: 'top center', transform: 'scale(1.5)' }}
+                    style={{ objectPosition: 'top center' }}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-2xl font-serif font-bold text-navy/30">
-                      {d.display_name?.charAt(0) ?? ''}
-                    </span>
+                  <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
+                    <span className="text-2xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
                   </div>
                 )}
               </div>
-              <h3 className="font-serif font-bold text-navy text-sm text-center capitalize">
-                {d.daughter_name ?? ''}
-              </h3>
+              <div className="px-3 py-2.5 text-center">
+                <p className="font-serif font-bold text-navy text-sm capitalize">{d.daughter_name ?? ''}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -258,16 +253,6 @@ export function HomePage() {
             </Link>
           </div>
 
-          {/* Live stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl">
-            {liveStats.map(({ label, value, icon: Icon }) => (
-              <div key={label} className="bg-navy rounded-xl p-4 border border-gold/20 text-center">
-                <Icon className="w-5 h-5 text-gold mx-auto mb-2" />
-                <div className="text-xl md:text-2xl font-bold text-gold font-display leading-tight">{value}</div>
-                <div className="text-xs text-cream/60 mt-1 font-sans">{label}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Scroll arrow */}
@@ -324,6 +309,45 @@ export function HomePage() {
                 <ArrowRight className="w-6 h-6 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
               </div>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ FEATURE TILES ═══ */}
+      <section className="bg-cream pb-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-6">
+            {[
+              { title: 'Press & Media', icon: Newspaper, link: '/magazine', comingSoon: false },
+              { title: 'Our Videos', icon: Video, link: '/magazine', comingSoon: false },
+              { title: 'Home Loans', icon: Landmark, link: '/home-loans', comingSoon: false },
+              { title: 'Real Estate Foundation Course', icon: GraduationCap, link: '#', comingSoon: true },
+            ].map(({ title, icon: Icon, link, comingSoon }) => (
+              <Link key={title} to={link} className="group relative bg-white rounded-2xl border border-gold/20 hover:border-gold/50 hover:shadow-xl transition-all p-8 flex flex-col items-center text-center">
+                {comingSoon && (
+                  <span className="absolute top-3 right-3 px-2.5 py-1 bg-gold text-navy text-xs font-bold rounded-full font-display uppercase tracking-wider">Coming Soon</span>
+                )}
+                <div className="w-14 h-14 rounded-xl bg-navy/8 border border-gold/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Icon className="w-7 h-7 text-gold" />
+                </div>
+                <h3 className="font-serif font-bold text-navy text-base md:text-lg">{title}</h3>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ LIVE STATS ═══ */}
+      <section className="bg-cream py-12">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+            {liveStats.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="bg-navy rounded-xl p-4 border border-gold/20 text-center">
+                <Icon className="w-5 h-5 text-gold mx-auto mb-2" />
+                <div className="text-xl md:text-2xl font-bold text-gold font-display leading-tight">{value}</div>
+                <div className="text-xs text-cream/60 mt-1 font-sans">{label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -669,8 +693,6 @@ export function HomePage() {
 }
 
 function MeetOurAITeam({ daughters, loading }: { daughters: DaughterPicture[]; loading: boolean }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
   return (
     <section className="py-16 bg-cream">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -689,60 +711,29 @@ function MeetOurAITeam({ daughters, loading }: { daughters: DaughterPicture[]; l
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {daughters.map(d => (
-              <div key={d.id}>
-                <button
-                  onClick={() => setExpandedId(d.id)}
-                  className="block w-full bg-white rounded-xl border border-gray-200 overflow-hidden transition-all hover:border-gold/40 hover:shadow-lg group text-left"
-                >
-                  <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
-                    {d.profile_picture_url ? (
-                      <img
-                        src={d.profile_picture_url}
-                        alt={d.daughter_name ?? ''}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        style={{ objectPosition: 'top center' }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
-                        <span className="text-2xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-3 py-2.5 text-center">
-                    <p className="font-serif font-bold text-navy text-sm capitalize">{d.daughter_name ?? ''}</p>
-                  </div>
-                </button>
+              <div key={d.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
+                  {d.profile_picture_url ? (
+                    <img
+                      src={d.profile_picture_url}
+                      alt={d.daughter_name ?? ''}
+                      className="w-full h-full object-cover"
+                      style={{ objectPosition: 'top center' }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
+                      <span className="text-2xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="px-3 py-2.5 text-center">
+                  <p className="font-serif font-bold text-navy text-sm capitalize">{d.daughter_name ?? ''}</p>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {expandedId && (() => {
-        const d = daughters.find(x => x.id === expandedId);
-        if (!d) return null;
-        return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setExpandedId(null)}>
-            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col relative" style={{ maxWidth: '280px' }} onClick={e => e.stopPropagation()}>
-              <button onClick={() => setExpandedId(null)} className="absolute top-3 right-3 z-10 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md">
-                <X className="w-5 h-5 text-navy" />
-              </button>
-              <div style={{ width: '280px', height: '420px' }} className="overflow-hidden">
-                {d.profile_picture_url ? (
-                  <img src={d.profile_picture_url} alt={d.daughter_name ?? ''} className="w-full h-full object-cover" style={{ objectPosition: 'top center' }} />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
-                    <span className="text-4xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 py-3 text-center">
-                <p className="font-serif font-bold text-navy capitalize">{d.daughter_name ?? ''}</p>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </section>
   );
 }
