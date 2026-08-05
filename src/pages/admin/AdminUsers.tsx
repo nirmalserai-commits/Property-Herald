@@ -55,7 +55,10 @@ export function AdminUsers() {
   async function toggleSuspend(u: UserRow) {
     setActionLoading(u.id);
     const newStatus = !u.is_active;
-    const { error: err } = await supabase.from('profiles').update({ is_active: newStatus }).eq('id', u.id);
+    const { error: err } = await supabase.from('profiles').update({
+      is_active: newStatus,
+      account_status: newStatus ? 'active' : 'suspended',
+    }).eq('id', u.id);
     if (!err) {
       await logAdminAction(supabase, user!.email!, newStatus ? 'reactivate_user' : 'suspend_user', 'profiles', u.id, { business_name: u.business_name });
       fetchUsers();

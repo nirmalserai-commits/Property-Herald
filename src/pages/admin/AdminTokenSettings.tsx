@@ -11,11 +11,21 @@ interface EditableConfig {
   featured_listing_cost: string;
   hot_property_cost: string;
   whatsapp_lead_cost: string;
+  show_platform_stats: string;
+  total_visitor_count: string;
+  total_sales_offers_generated: string;
+  sales_offer_short_tokens: string;
+  sales_offer_detailed_tokens: string;
+  sales_offer_ultra_tokens: string;
+  vam_full_bundle_tokens: string;
+  vam_naksha_tokens: string;
+  vam_meeting_fixing_tokens: string;
+  vam_sequence_tokens: string;
 }
 
 export function AdminTokenSettings() {
   const { user } = useAuth();
-  const [config, setConfig] = useState<EditableConfig>({ token_rate_inr: '', verified_badge_cost: '', featured_listing_cost: '', hot_property_cost: '', whatsapp_lead_cost: '' });
+  const [config, setConfig] = useState<EditableConfig>({ token_rate_inr: '', verified_badge_cost: '', featured_listing_cost: '', hot_property_cost: '', whatsapp_lead_cost: '', show_platform_stats: 'false', total_visitor_count: '0', total_sales_offers_generated: '0', sales_offer_short_tokens: '1', sales_offer_detailed_tokens: '2', sales_offer_ultra_tokens: '3', vam_full_bundle_tokens: '10', vam_naksha_tokens: '1', vam_meeting_fixing_tokens: '5', vam_sequence_tokens: '10' });
   const [bundles, setBundles] = useState<TokenBundle[]>([]);
   const [editedBundles, setEditedBundles] = useState<Record<string, { price_inr: string; base_tokens: string; bonus_tokens: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -37,6 +47,16 @@ export function AdminTokenSettings() {
         featured_listing_cost: map.featured_listing_cost ?? '10',
         hot_property_cost: map.hot_property_cost ?? '15',
         whatsapp_lead_cost: map.whatsapp_lead_cost ?? '2',
+        show_platform_stats: map.show_platform_stats ?? 'false',
+        total_visitor_count: map.total_visitor_count ?? '0',
+        total_sales_offers_generated: map.total_sales_offers_generated ?? '0',
+        sales_offer_short_tokens: map.sales_offer_short_tokens ?? '1',
+        sales_offer_detailed_tokens: map.sales_offer_detailed_tokens ?? '2',
+        sales_offer_ultra_tokens: map.sales_offer_ultra_tokens ?? '3',
+        vam_full_bundle_tokens: map.vam_full_bundle_tokens ?? '10',
+        vam_naksha_tokens: map.vam_naksha_tokens ?? '1',
+        vam_meeting_fixing_tokens: map.vam_meeting_fixing_tokens ?? '5',
+        vam_sequence_tokens: map.vam_sequence_tokens ?? '10',
       });
     }
     if (bundleData) {
@@ -84,9 +104,18 @@ export function AdminTokenSettings() {
     { key: 'featured_listing_cost' as const, label: 'Featured Listing', unit: 'tokens / week', desc: 'Top placement in search results' },
     { key: 'hot_property_cost' as const, label: 'Hot Property Tag', unit: 'tokens / week', desc: '"Hot" badge with boosted visibility' },
     { key: 'whatsapp_lead_cost' as const, label: 'WhatsApp Lead Click', unit: 'tokens / click', desc: 'Charged per WhatsApp Connect click' },
+    { key: 'sales_offer_short_tokens' as const, label: 'Sales Offer: Short', unit: 'tokens / offer', desc: 'Cost of generating a short sales offer' },
+    { key: 'sales_offer_detailed_tokens' as const, label: 'Sales Offer: Detailed', unit: 'tokens / offer', desc: 'Cost of generating a detailed sales offer' },
+    { key: 'sales_offer_ultra_tokens' as const, label: 'Sales Offer: Ultra', unit: 'tokens / offer', desc: 'Ultra detailed offer with Naksha Report' },
+    { key: 'vam_full_bundle_tokens' as const, label: 'VAM: AI Follow-Up', unit: 'tokens / action', desc: 'Cost of requesting AI follow-up on a lead' },
+    { key: 'vam_naksha_tokens' as const, label: 'VAM: Naksha Report', unit: 'tokens / action', desc: 'Cost of ordering a Naksha area report' },
+    { key: 'vam_meeting_fixing_tokens' as const, label: 'VAM: Meeting Fixing', unit: 'tokens / action', desc: 'Cost of requesting meeting fixing service' },
+    { key: 'vam_sequence_tokens' as const, label: 'VAM: Follow-Up Sequence', unit: 'tokens / action', desc: 'Cost of starting a follow-up sequence' },
   ];
 
   if (loading) return <AdminLayout><div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-navy border-t-transparent rounded-full animate-spin" /></div></AdminLayout>;
+
+  const statsEnabled = config.show_platform_stats === 'true';
 
   return (
     <AdminLayout>
@@ -189,6 +218,33 @@ export function AdminTokenSettings() {
                   {saving ? 'Saving...' : 'Confirm & Save'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Platform Stats Toggle (Section 15) */}
+      <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-6">
+        <h3 className="font-serif font-bold text-navy text-lg mb-2">Platform Statistics Display</h3>
+        <p className="text-sm text-gray-500 mb-4">Toggle whether the homepage shows visitor count and sales offer count. Set the numbers displayed when enabled.</p>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-gray-700">Show platform statistics on homepage</span>
+          <button
+            onClick={() => setConfig(c => ({ ...c, show_platform_stats: c.show_platform_stats === 'true' ? 'false' : 'true' }))}
+            className={`relative w-12 h-6 rounded-full transition-colors ${statsEnabled ? 'bg-gold' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${statsEnabled ? 'translate-x-6' : ''}`} />
+          </button>
+        </div>
+        {statsEnabled && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Total Visitor Count</label>
+              <input type="number" value={config.total_visitor_count} onChange={e => setConfig(c => ({ ...c, total_visitor_count: e.target.value }))} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Total Sales Offers Generated</label>
+              <input type="number" value={config.total_sales_offers_generated} onChange={e => setConfig(c => ({ ...c, total_sales_offers_generated: e.target.value }))} className="input-field" />
             </div>
           </div>
         )}

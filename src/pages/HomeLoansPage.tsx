@@ -26,6 +26,20 @@ const PARTNER_BANKS = [
     tagline: 'Fast approval in 48 hours',
   },
   {
+    name: 'Axis Bank',
+    rate: '8.80%',
+    logo: 'AXIS',
+    color: 'bg-purple-700',
+    tagline: 'Competitive rates with quick processing',
+  },
+  {
+    name: 'Bank of Baroda',
+    rate: '8.60%',
+    logo: 'BOB',
+    color: 'bg-amber-600',
+    tagline: 'Trusted public sector bank with attractive home loan rates',
+  },
+  {
     name: 'LIC Housing Finance',
     rate: '8.65%',
     logo: 'LIC',
@@ -81,7 +95,7 @@ export function HomeLoansPage() {
             <p className="text-gold text-sm font-semibold tracking-widest uppercase mb-3">Naya Ghar Finance Centre</p>
             <h1 className="text-4xl md:text-5xl font-bold mb-3">Naya Ghar, Naya Sapna,<br />Naya Raasta</h1>
             <p className="text-cream/60 text-lg max-w-2xl mx-auto">
-              Get pre-qualified for a home loan in 5 minutes. Our AI team connects you with India's leading banks — SBI, HDFC, ICICI and LIC Housing Finance.
+              Get pre-qualified for a home loan in 5 minutes. Our AI team connects you with India's leading banks — SBI, HDFC, ICICI, Axis, Bank of Baroda and LIC Housing Finance.
             </p>
           </div>
         </div>
@@ -291,7 +305,7 @@ export function HomeLoansPage() {
         <div className="max-w-5xl mx-auto px-4 py-12">
           <h2 className="text-2xl font-bold text-center mb-2" style={{ color: '#0a1628' }}>Partner Banks</h2>
           <p className="text-center text-gray-500 text-sm mb-8">We work with India's most trusted home loan providers</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {PARTNER_BANKS.map(bank => (
               <div key={bank.name} className="bg-white rounded-2xl border border-gray-200 p-5 text-center shadow-sm hover:shadow-md transition-shadow">
                 <div className={`w-12 h-12 ${bank.color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
@@ -330,7 +344,7 @@ export function HomeLoansPage() {
           <div className="grid sm:grid-cols-3 gap-6">
             {[
               { icon: '⚡', title: 'Instant Pre-Qualification', desc: 'Know your eligibility in 5 minutes, not days' },
-              { icon: '🏦', title: '4 Partner Banks', desc: 'Compare rates across SBI, HDFC, ICICI, and LIC HFL' },
+              { icon: '🏦', title: '6 Partner Banks', desc: 'Compare rates across SBI, HDFC, ICICI, Axis, Bank of Baroda, and LIC HFL' },
               { icon: '🔒', title: 'Zero Cost to You', desc: 'Our service is completely free for home buyers' },
             ].map(item => (
               <div key={item.title} className="bg-white rounded-2xl border border-gray-200 p-6 text-center">

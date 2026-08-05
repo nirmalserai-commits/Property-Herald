@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, Building2, ShieldCheck, Coins,
   TrendingUp, Bell, LogOut, ArrowLeft, Shield, Bot, Image, Landmark,
   Video, Handshake, Brain, Lock, Mail, Award, MapPin, FolderOpen, UserCheck,
+  Users as UsersIcon, Tag, Package,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
@@ -16,6 +17,9 @@ const NAV = [
   { to: '/admin/users', label: 'Users', icon: Users, exact: false },
   { to: '/admin/registrations', label: 'Registrations', icon: UserCheck, exact: false },
   { to: '/admin/listings', label: 'Listings', icon: Building2, exact: false },
+  { to: '/admin/crm', label: 'Master CRM', icon: UsersIcon, exact: false },
+  { to: '/admin/deals', label: 'Deals', icon: Tag, exact: false },
+  { to: '/admin/packages', label: 'Packages', icon: Package, exact: false },
   { to: '/admin/verifications', label: 'Verifications', icon: ShieldCheck, exact: false },
   { to: '/admin/locations', label: 'Locations', icon: MapPin, exact: false },
   { to: '/admin/hall-of-fame', label: 'Hall of Fame', icon: Award, exact: false },

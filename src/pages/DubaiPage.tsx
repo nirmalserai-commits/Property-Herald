@@ -15,7 +15,7 @@ export function DubaiPage() {
   }, []);
 
   useEffect(() => {
-    let q = supabase.from('listings').select('*, profile:profiles(*), city:cities(*)').eq('is_active', true).eq('is_dubai', true).order('created_at', { ascending: false });
+    let q = supabase.from('listings').select('*, profile:profiles(*), city:cities(*)').eq('is_active', true).eq('is_dubai', true).order('is_hot', { ascending: false }).order('is_featured', { ascending: false }).order('created_at', { ascending: false });
     if (selectedCity) q = q.eq('city_id', selectedCity);
     q.then(({ data }) => { if (data) setListings(data as Listing[]); setLoading(false); });
   }, [selectedCity]);

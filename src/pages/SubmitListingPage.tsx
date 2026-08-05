@@ -24,9 +24,11 @@ export function SubmitListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ listingId: string } | null>(null);
 
+  const [marketTrack, setMarketTrack] = useState<'india' | 'dubai'>('india');
   const [form, setForm] = useState({
     title: '',
     city_id: '',
+    emirate: '',
     description: '',
     specialties: '',
     property_types: [] as string[],
@@ -41,9 +43,11 @@ export function SubmitListingPage() {
     Promise.all([
       supabase.from('cities').select('*').order('name'),
       supabase.from('token_wallets').select('balance').eq('user_id', user.id).maybeSingle(),
-    ]).then(([citiesRes, walletRes]) => {
+      supabase.from('profiles').select('market_track').eq('id', user.id).maybeSingle(),
+    ]).then(([citiesRes, walletRes, profileRes]) => {
       if (citiesRes.data) setCities(citiesRes.data);
       if (walletRes.data) setWalletBalance(walletRes.data.balance);
+      if (profileRes.data?.market_track === 'dubai') setMarketTrack('dubai');
       setLoading(false);
     });
   }, [user, navigate]);
@@ -66,7 +70,8 @@ export function SubmitListingPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) { setError('Title is required.'); return; }
-    if (!form.city_id) { setError('Please select a city.'); return; }
+    if (marketTrack === 'india' && !form.city_id) { setError('Please select a city.'); return; }
+    if (marketTrack === 'dubai' && !form.emirate) { setError('Please select an emirate.'); return; }
     if (form.property_types.length === 0) { setError('Select at least one property type.'); return; }
     if (form.deal_types.length === 0) { setError('Select at least one deal type.'); return; }
     if (walletBalance !== null && walletBalance < SUBMIT_COST) {
@@ -78,7 +83,7 @@ export function SubmitListingPage() {
     setError(null);
 
     const { data, error: rpcError } = await supabase.rpc('submit_listing', {
-      p_city_id: form.city_id,
+      p_city_id: marketTrack === 'india' ? parseInt(form.city_id) : null,
       p_title: form.title.trim(),
       p_description: form.description.trim() || null,
       p_specialties: form.specialties.split(',').map(s => s.trim()).filter(Boolean),
@@ -87,6 +92,13 @@ export function SubmitListingPage() {
       p_years_experience: parseInt(form.years_experience) || 0,
       p_projects_completed: parseInt(form.projects_completed) || 0,
     });
+
+    // For Dubai listings, also set emirate and market_track on the listing
+    if (data?.listing_id && marketTrack === 'dubai') {
+      await supabase.from('listings').update({ emirate: form.emirate, market_track: 'dubai', is_dubai: true }).eq('id', data.listing_id);
+    } else if (data?.listing_id && marketTrack === 'india') {
+      await supabase.from('listings').update({ market_track: 'india' }).eq('id', data.listing_id);
+    }
 
     setSubmitting(false);
 
@@ -135,7 +147,7 @@ export function SubmitListingPage() {
                 Go to Dashboard
               </button>
               <button
-                onClick={() => { setSuccess(null); setForm({ title: '', city_id: '', description: '', specialties: '', property_types: [], deal_types: [], years_experience: '', projects_completed: '' }); }}
+                onClick={() => { setSuccess(null); setForm({ title: '', city_id: '', emirate: '', description: '', specialties: '', property_types: [], deal_types: [], years_experience: '', projects_completed: '' }); }}
                 className="w-full py-3 rounded-xl font-semibold border-2 transition-all hover:border-opacity-80"
                 style={{ borderColor: '#c9a84c', color: '#c9a84c' }}
               >
@@ -236,6 +248,25 @@ export function SubmitListingPage() {
                 ))}
               </select>
             </div>
+            {marketTrack === 'dubai' && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold flex items-center gap-2" style={{ color: '#0a1628' }}>
+                  <MapPin size={15} style={{ color: '#c9a84c' }} />
+                  Emirate <span className="text-red-400">*</span>
+                </label>
+                <select
+                  value={form.emirate}
+                  onChange={e => set('emirate', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-gold/50 transition-colors appearance-none"
+                  required
+                >
+                  <option value="">Select emirate</option>
+                  {['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'].map(em => (
+                    <option key={em} value={em}>{em}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Property types */}
             <div className="space-y-2">

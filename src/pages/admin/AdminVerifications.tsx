@@ -27,7 +27,7 @@ export function AdminVerifications() {
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     let q = supabase
-      .from('verification_requests')
+      .from('verifications')
       .select('*, profile:profiles(business_name, email, contact_person, phone)', { count: 'exact' });
     if (filter !== 'all') q = q.eq('status', filter);
     q = q.order('created_at', { ascending: false }).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
@@ -41,7 +41,7 @@ export function AdminVerifications() {
 
   async function handleApprove(req: VerificationRequest) {
     setActionLoading(req.id);
-    const { error: reqErr } = await supabase.from('verification_requests').update({
+    const { error: reqErr } = await supabase.from('verifications').update({
       status: 'approved',
       reviewed_by: user!.email,
       reviewed_at: new Date().toISOString(),
@@ -54,7 +54,7 @@ export function AdminVerifications() {
         p_amount: -5,
         p_reason: 'Verification badge activated (monthly fee deducted)',
       }).then(() => {});
-      await logAdminAction(supabase, user!.email!, 'approve_verification', 'verification_requests', req.id, { user_id: req.user_id, type: req.type });
+      await logAdminAction(supabase, user!.email!, 'approve_verification', 'verifications', req.id, { user_id: req.user_id, type: req.type });
       fetchRequests();
     }
     setActionLoading(null);
@@ -63,14 +63,14 @@ export function AdminVerifications() {
   async function handleReject() {
     if (!rejectModal || !rejectReason) return;
     setActionLoading(rejectModal.id);
-    const { error } = await supabase.from('verification_requests').update({
+    const { error } = await supabase.from('verifications').update({
       status: 'rejected',
       rejection_reason: rejectReason,
       reviewed_by: user!.email,
       reviewed_at: new Date().toISOString(),
     }).eq('id', rejectModal.id);
     if (!error) {
-      await logAdminAction(supabase, user!.email!, 'reject_verification', 'verification_requests', rejectModal.id, { reason: rejectReason });
+      await logAdminAction(supabase, user!.email!, 'reject_verification', 'verifications', rejectModal.id, { reason: rejectReason });
       fetchRequests();
     }
     setActionLoading(null);

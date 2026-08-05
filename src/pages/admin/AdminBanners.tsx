@@ -6,7 +6,7 @@ import type { Banner } from '../../types/database';
 import {
   Image, Plus, Edit3, Trash2, Eye, ToggleLeft, ToggleRight,
   X, Save, RefreshCw, Monitor, MousePointer, Calendar,
-  ExternalLink, Filter,
+  ExternalLink, Filter, Upload,
 } from 'lucide-react';
 
 const POSITIONS: { value: Banner['position']; label: string; desc: string }[] = [
@@ -49,6 +49,7 @@ export function AdminBanners() {
   const [selected, setSelected] = useState<Banner | null>(null);
   const [form, setForm] = useState<Partial<Banner>>(EMPTY_FORM);
   const [filterPos, setFilterPos] = useState<string>('all');
+  const [uploading, setUploading] = useState(false);
 
   async function fetchBanners() {
     setLoading(true);
@@ -80,6 +81,19 @@ export function AdminBanners() {
 
   async function handleSave() {
     if (!form.name?.trim() || !form.image_url?.trim()) return;
+
+    // CTA validation: both cta_text and cta_url must be filled or both empty
+    const hasCtaText = form.cta_text?.trim();
+    const hasCtaUrl = form.cta_url?.trim();
+    if (hasCtaText && !hasCtaUrl) {
+      alert('CTA Destination URL is required when CTA Button Text is filled. Please fill both or leave both empty.');
+      return;
+    }
+    if (hasCtaUrl && !hasCtaText) {
+      alert('CTA Button Text is required when CTA Destination URL is filled. Please fill both or leave both empty.');
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
@@ -327,13 +341,42 @@ export function AdminBanners() {
                 </FormField>
               </div>
 
-              <FormField label="Banner Image URL *">
-                <input type="url" value={form.image_url ?? ''} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://images.pexels.com/..." className="input-field" />
-                {form.image_url && (
-                  <div className="mt-2 h-28 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              <FormField label="Banner Image">
+                <div className="space-y-3">
+                  {/* URL input */}
+                  <input type="url" value={form.image_url ?? ''} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://images.pexels.com/..." className="input-field" />
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <div className="flex-1 h-px bg-gray-200" />or upload a file<div className="flex-1 h-px bg-gray-200" />
                   </div>
-                )}
+                  {/* File upload */}
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-gold/50 hover:bg-gold/5 transition-all">
+                    {uploading ? (
+                      <span className="text-sm text-gray-500">Uploading…</span>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-gray-400 mb-1" />
+                        <span className="text-sm text-gray-500">Click to upload banner image</span>
+                      </>
+                    )}
+                    <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file || !user) return;
+                      setUploading(true);
+                      const path = `banners/${Date.now()}-${file.name}`;
+                      const { error: upErr } = await supabase.storage.from('assets').upload(path, file);
+                      if (!upErr) {
+                        const { data: pub } = supabase.storage.from('assets').getPublicUrl(path);
+                        setForm(f => ({ ...f, image_url: pub.publicUrl }));
+                      }
+                      setUploading(false);
+                    }} />
+                  </label>
+                  {form.image_url && (
+                    <div className="h-28 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                      <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    </div>
+                  )}
+                </div>
               </FormField>
 
               <div className="grid md:grid-cols-2 gap-4">

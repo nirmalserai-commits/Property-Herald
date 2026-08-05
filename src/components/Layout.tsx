@@ -111,7 +111,7 @@ export function Navbar() {
               <Link to="/directory" className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 isActive('/directory') ? 'bg-gold/20 text-gold' : 'text-cream/80 hover:text-gold hover:bg-gold/10'
               }`}>
-                <Building2 className="w-4 h-4 mr-2" />Directory
+                <Building2 className="w-4 h-4 mr-2" />India Property
                 <ChevronDown className="w-3 h-3 ml-1" />
               </Link>
               {directoryOpen && (
@@ -141,7 +141,13 @@ export function Navbar() {
             <Link to="/dubai" className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               isActive('/dubai') ? 'bg-gold/20 text-gold' : 'text-cream/80 hover:text-gold hover:bg-gold/10'
             }`}>
-              <span className="mr-1">🇦🇪</span>Dubai
+              <span className="mr-1">🇦🇪</span>Dubai Property
+            </Link>
+
+            <Link to="/home-loans" className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              isActive('/home-loans') ? 'bg-gold/20 text-gold' : 'text-cream/80 hover:text-gold hover:bg-gold/10'
+            }`}>
+              <Heart className="w-4 h-4 mr-2" />Home Loans
             </Link>
 
             <div className="relative"
@@ -171,9 +177,7 @@ export function Navbar() {
                   <Link to="/ambassadors" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
                     <Award className="w-3.5 h-3.5 mr-2 text-gold/50" />Ambassadors
                   </Link>
-                  <Link to="/home-loans" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
-                    <Heart className="w-3.5 h-3.5 mr-2 text-gold/50" />Home Loans
-                  </Link>
+
                   <div className="border-t border-gold/20 mt-1 pt-1">
                     <div className="px-3 py-2 text-xs font-display font-semibold text-gold/60 uppercase tracking-widest">My Account</div>
                     <Link to="/buyer-passport" onClick={() => setMoreOpen(false)} className="flex items-center px-4 py-2 text-sm text-cream/80 hover:bg-gold/10 hover:text-gold transition-colors">
@@ -231,7 +235,7 @@ export function Navbar() {
           <div className="px-4 py-3 space-y-1">
             {[
               { path: '/', label: 'Home', icon: Home },
-              { path: '/directory', label: 'Directory', icon: Building2 },
+              { path: '/directory', label: 'India Property', icon: Building2 },
               { path: '/magazine', label: 'Magazine', icon: BookOpen },
               { path: '/emi-calculator', label: 'EMI Calculator', icon: Calculator },
               { path: '/nri-portal', label: 'NRI Portal', icon: Globe },
@@ -240,7 +244,8 @@ export function Navbar() {
               { path: '/partners', label: 'Partners', icon: Handshake },
               { path: '/ambassadors', label: 'Ambassadors', icon: Award },
               { path: '/home-loans', label: 'Home Loans', icon: Heart },
-              { path: '/dubai', label: 'Dubai', icon: Building2 },
+              { path: '/dubai', label: 'Dubai Property', icon: Building2 },
+              { path: '/home-loans', label: 'Home Loans', icon: Heart },
               { path: '/hall-of-fame', label: 'Hall of Fame', icon: Award },
               { path: '/terms', label: 'Terms', icon: Shield },
             ].map(({ path, label, icon: Icon }) => (

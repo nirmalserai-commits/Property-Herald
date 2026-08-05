@@ -33,6 +33,7 @@ export function RegisterPage() {
     description: '', website_url: '',
     property_types: [] as string[], deal_types: [] as string[],
     selected_bundle: 'power',
+    market_track: 'india' as 'india' | 'dubai',
   });
 
   useEffect(() => {
@@ -84,6 +85,8 @@ export function RegisterPage() {
         city_id: formData.city_id,
         description: formData.description || null,
         website_url: formData.website_url || null,
+        market_track: formData.market_track,
+        wallet_currency: formData.market_track === 'dubai' ? 'AED' : 'INR',
       });
     }
 
@@ -167,6 +170,26 @@ export function RegisterPage() {
                       )}
                     </button>
                   ))}
+                </div>
+                {/* Market Track selector */}
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Market Track *</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => set('market_track', 'india')}
+                      className={`p-4 rounded-xl border-2 transition-all text-left ${
+                        formData.market_track === 'india' ? 'border-navy bg-navy/3' : 'border-gray-200 hover:border-gray-300'
+                      }`}>
+                      <p className="font-semibold text-navy text-sm">India Track</p>
+                      <p className="text-xs text-warm-gray">INR wallet · City + Locality · Naksha Reports</p>
+                    </button>
+                    <button type="button" onClick={() => set('market_track', 'dubai')}
+                      className={`p-4 rounded-xl border-2 transition-all text-left ${
+                        formData.market_track === 'dubai' ? 'border-navy bg-navy/3' : 'border-gray-200 hover:border-gray-300'
+                      }`}>
+                      <p className="font-semibold text-navy text-sm">Dubai Track</p>
+                      <p className="text-xs text-warm-gray">AED wallet · 7 Emirates · Escrow + RERA</p>
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-8 flex justify-end">
                   <button type="button" onClick={() => { if (validate()) setStep(2); }} disabled={!formData.business_type}

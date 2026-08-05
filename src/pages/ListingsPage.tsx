@@ -56,6 +56,8 @@ export function ListingsPage() {
         .select('*, profile:profiles(*), city:cities(*)')
         .eq('is_active', true)
         .eq('moderation_status', 'approved')
+        .neq('market_track', 'dubai')
+        .order('is_hot', { ascending: false })
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false });
 

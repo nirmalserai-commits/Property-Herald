@@ -29,6 +29,11 @@ export function TokenPurchasePage() {
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [razorpayKey, setRazorpayKey] = useState<string | null>(null);
 
+  const isDubai = (profile?.market_track as string) === 'dubai';
+  const currency = isDubai ? 'AED' : 'INR';
+  const currencySymbol = isDubai ? 'AED' : '₹';
+  const tokenPrice = isDubai ? 2 : 20;
+
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     fetchData();
@@ -148,7 +153,7 @@ export function TokenPurchasePage() {
                 <Coins className="w-3 h-3 mr-1.5" />Token Economy
               </div>
               <h1 className="text-3xl font-serif font-bold text-cream">Token Wallet</h1>
-              <p className="text-cream/60 mt-1">1 Token = ₹20 · Power your listings, badges, and lead tools</p>
+              <p className="text-cream/60 mt-1">1 Token = {currencySymbol}{tokenPrice} · Power your listings, badges, and lead tools</p>
             </div>
             {wallet !== null && (
               <div className={`rounded-2xl px-8 py-5 border text-center ${isLowBalance ? 'bg-burgundy/20 border-burgundy/40' : 'bg-gold/10 border-gold/30'}`}>
@@ -206,7 +211,8 @@ export function TokenPurchasePage() {
             {bundles.map((bundle, idx) => {
               const Icon = BUNDLE_ICONS[idx] || Coins;
               const highlight = BUNDLE_HIGHLIGHTS[idx];
-              const perToken = (bundle.price_inr / bundle.total_tokens).toFixed(2);
+              const price = isDubai ? (bundle.price_aed ?? 0) : bundle.price_inr;
+              const perToken = (price / bundle.total_tokens).toFixed(2);
               const isPopular = highlight === 'Most Popular';
               const isBest = highlight === 'Best Value';
               return (
@@ -242,10 +248,10 @@ export function TokenPurchasePage() {
 
                   <div className="mt-auto pt-4 border-t border-current/10">
                     <p className={`text-xl font-bold font-display ${isPopular || isBest ? 'text-cream' : 'text-navy'}`}>
-                      ₹{bundle.price_inr.toLocaleString('en-IN')}
+                      {currencySymbol}{price.toLocaleString('en-IN')}
                     </p>
                     <p className={`text-xs mt-0.5 ${isPopular || isBest ? 'text-cream/50' : 'text-warm-gray'}`}>
-                      ₹{perToken}/token
+                      {currencySymbol}{perToken}/token
                     </p>
                   </div>
 

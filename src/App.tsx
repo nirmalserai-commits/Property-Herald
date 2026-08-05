@@ -57,6 +57,9 @@ import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminLocations } from './pages/admin/AdminLocations';
 import { AdminRegistrations } from './pages/admin/AdminRegistrations';
 import { AdminDaughterPictures } from './pages/admin/AdminDaughterPictures';
+import { AdminCrm } from './pages/admin/AdminCrm';
+import { AdminDeals } from './pages/admin/AdminDeals';
+import { AdminPackages } from './pages/admin/AdminPackages';
 import { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 
@@ -110,6 +113,7 @@ function AppRoutes() {
       <Route path="/listings" element={<Layout><ListingsPage /></Layout>} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/developer-dashboard" element={<DeveloperDashboardPage />} />
+      <Route path="/developer/dashboard" element={<DeveloperDashboardPage />} />
       <Route path="/tokens" element={<TokenPurchasePage />} />
       <Route path="/invoice/:id" element={<InvoicePage />} />
       <Route path="/" element={<Layout><HomePage /></Layout>} />
@@ -163,6 +167,9 @@ function AppRoutes() {
       <Route path="/admin/nora" element={<AdminNoraChat />} />
       <Route path="/admin/nita" element={<AdminNitaChat />} />
       <Route path="/admin/digest-log" element={<AdminDigestLog />} />
+      <Route path="/admin/crm" element={<AdminCrm />} />
+      <Route path="/admin/deals" element={<AdminDeals />} />
+      <Route path="/admin/packages" element={<AdminPackages />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

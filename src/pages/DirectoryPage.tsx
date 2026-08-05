@@ -173,6 +173,8 @@ export function DirectoryPage() {
 
 function ListingCard({ listing }: { listing: ListingWithProfile }) {
   const [showContact, setShowContact] = useState(false);
+  const profile = listing.profile;
+  const hasProfile = !!profile;
 
   const typeLabels: Record<string, string> = {
     developer: 'Developer & Builder',
@@ -185,29 +187,29 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
       <div className="p-6">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gold/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-gold/20">
-            {listing.profile.business_type === 'developer' ? <Building2 className="w-8 h-8 text-gold" /> :
-             listing.profile.business_type === 'agency' ? <Users className="w-8 h-8 text-gold" /> :
+            {profile?.business_type === 'developer' ? <Building2 className="w-8 h-8 text-gold" /> :
+             profile?.business_type === 'agency' ? <Users className="w-8 h-8 text-gold" /> :
              <Sparkles className="w-8 h-8 text-gold" />}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="text-lg font-serif font-semibold text-navy truncate">{listing.profile.business_name}</h3>
+              <h3 className="text-lg font-serif font-semibold text-navy truncate">{profile?.business_name ?? listing.title ?? 'Details unavailable'}</h3>
               {listing.is_featured && (
                 <span className="inline-flex items-center px-2 py-1 bg-gold/10 text-gold text-xs font-medium rounded border border-gold/25 flex-shrink-0">
                   <Award className="w-3 h-3 mr-1" />Featured
                 </span>
               )}
             </div>
-            <p className="text-sm text-warm-gray mb-2">{typeLabels[listing.profile.business_type]}</p>
+            <p className="text-sm text-warm-gray mb-2">{hasProfile ? (typeLabels[profile!.business_type] ?? 'Real Estate Professional') : 'Listing awaiting profile'}</p>
             <div className="flex items-center flex-wrap gap-2">
-              {listing.profile.is_verified && (
+              {profile?.is_verified && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gold/10 text-gold border border-gold/25">
                   <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                   Gold Member
                 </span>
               )}
               <span className="flex items-center text-sm text-warm-gray">
-                <MapPin className="w-3.5 h-3.5 mr-1 text-gold/60" />{listing.city?.name}, {listing.city?.state}
+                <MapPin className="w-3.5 h-3.5 mr-1 text-gold/60" />{listing.city?.name ?? 'Location unavailable'}{listing.city?.state ? `, ${listing.city.state}` : ''}
               </span>
             </div>
           </div>
@@ -234,7 +236,7 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
           )}
         </div>
 
-        <p className="text-warm-gray text-sm mb-4 line-clamp-2">{listing.description || listing.profile.description || 'Professional real estate services'}</p>
+        <p className="text-warm-gray text-sm mb-4 line-clamp-2">{listing.description || profile?.description || 'Professional real estate services'}</p>
 
         <div className="flex items-center gap-4 mb-4 text-sm text-warm-gray">
           {listing.rating > 0 && (
@@ -248,16 +250,22 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
         </div>
 
         <div className="flex gap-2">
-          <a href={`https://wa.me/${listing.profile.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent('Hi, I found your listing on Property Herald and I am interested in your services.')}`}
-            target="_blank" rel="noopener noreferrer"
-            onClick={() => {
-              supabase.functions.invoke('whatsapp-lead-click', {
-                body: { listing_id: listing.id, profile_id: listing.profile_id },
-              }).catch(() => {});
-            }}
-            className="flex-1 btn-whatsapp">
-            <MessageCircle className="w-4 h-4 mr-2" />WhatsApp
-          </a>
+          {profile?.whatsapp_number ? (
+            <a href={`https://wa.me/${profile.whatsapp_number.replace(/\D/g, '')}?text=${encodeURIComponent('Hi, I found your listing on Property Herald and I am interested in your services.')}`}
+              target="_blank" rel="noopener noreferrer"
+              onClick={() => {
+                supabase.functions.invoke('whatsapp-lead-click', {
+                  body: { listing_id: listing.id, profile_id: listing.profile_id },
+                }).catch(() => {});
+              }}
+              className="flex-1 btn-whatsapp">
+              <MessageCircle className="w-4 h-4 mr-2" />WhatsApp
+            </a>
+          ) : (
+            <span className="flex-1 inline-flex items-center justify-center px-4 py-2.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg">
+              <MessageCircle className="w-4 h-4 mr-2" />WhatsApp unavailable
+            </span>
+          )}
           <button onClick={() => setShowContact(!showContact)}
             className={`inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors border ${
               showContact
@@ -266,8 +274,8 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
             }`}>
             <Phone className="w-4 h-4" />
           </button>
-          {listing.profile.website_url && (
-            <a href={listing.profile.website_url} target="_blank" rel="noopener noreferrer"
+          {profile?.website_url && (
+            <a href={profile.website_url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center justify-center px-4 py-2.5 border border-gold/20 text-warm-gray text-sm font-medium rounded-lg hover:bg-gold/5 hover:border-gold/40 transition-colors">
               <Globe className="w-4 h-4" />
             </a>
@@ -276,8 +284,8 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
 
         {showContact && (
           <div className="mt-4 p-3 bg-gold/5 border border-gold/15 rounded-lg">
-            <p className="text-sm text-warm-gray"><span className="font-medium text-navy">Phone:</span> {listing.profile.phone}</p>
-            <p className="text-sm text-warm-gray mt-1"><span className="font-medium text-navy">Contact:</span> {listing.profile.contact_person}</p>
+            <p className="text-sm text-warm-gray"><span className="font-medium text-navy">Phone:</span> {profile?.phone ?? 'Details unavailable'}</p>
+            <p className="text-sm text-warm-gray mt-1"><span className="font-medium text-navy">Contact:</span> {profile?.contact_person ?? 'Details unavailable'}</p>
           </div>
         )}
       </div>

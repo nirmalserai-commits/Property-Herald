@@ -15,46 +15,66 @@ const QUICK_REPLIES = [
 ];
 
 interface GuidedAnswer {
+  preferredName?: string;
   dealType?: string;
   city?: string;
   budget?: string;
   propertyType?: string;
   timeline?: string;
   whatsapp?: string;
+  comfortHours?: string;
 }
 
 const GUIDED_QUESTIONS = [
   {
     id: 'dealType',
-    question: 'What are you looking for?',
-    options: ['Buy a Property', 'Rent a Property', 'Invest in Real Estate'],
+    question: 'Lovely to meet you! What brings you to Property Herald today?',
+    options: ['I want to buy a property', 'I am looking to rent', 'I am exploring investments'],
     points: 15,
   },
   {
     id: 'city',
-    question: 'Which city interests you most?',
-    options: ['Mumbai', 'Pune', 'Thane / Navi Mumbai', 'Nashik', 'Other City'],
+    question: 'Wonderful! Which city are you most interested in?',
+    options: ['Mumbai', 'Pune', 'Thane / Navi Mumbai', 'Nashik', 'Another city'],
     points: 15,
   },
   {
     id: 'budget',
-    question: "What's your budget range?",
-    options: ['Under ₹50 Lakhs', '₹50L – ₹1 Crore', '₹1Cr – ₹2 Crore', '₹2Cr – ₹5 Crore', 'Above ₹5 Crore'],
+    question: 'So I can find you the perfect match, what budget feels right?',
+    options: ['Under Rs50 Lakhs', 'Rs50L to Rs1 Crore', 'Rs1Cr to Rs2 Crore', 'Rs2Cr to Rs5 Crore', 'Above Rs5 Crore'],
     points: 20,
   },
   {
     id: 'propertyType',
-    question: 'What type of property?',
-    options: ['Residential', 'Commercial', 'Both / Not Sure'],
+    question: 'What type of property are you drawn to?',
+    options: ['Residential', 'Commercial', 'Both or not sure yet'],
     points: 15,
   },
   {
     id: 'timeline',
-    question: 'When do you plan to buy?',
-    options: ['Immediately', 'Within 3 Months', 'Within 6 Months', 'Within 1 Year', 'Just Exploring'],
+    question: 'When are you hoping to make this happen?',
+    options: ['Right away', 'Within 3 months', 'Within 6 months', 'Within a year', 'Just exploring for now'],
     points: 15,
   },
+  {
+    id: 'whatsapp',
+    question: 'Almost there! Share your WhatsApp number so our team can send you matching properties. You can skip this if you prefer.',
+    points: 20,
+  },
+  {
+    id: 'comfortHours',
+    question: 'What hours work best for a call back?',
+    options: ['Morning (9-12)', 'Afternoon (12-4)', 'Evening (4-8)', 'Night (8-10)'],
+    points: 0,
+  },
 ];
+
+function getTimeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 function calcScore(answers: GuidedAnswer, whatsappProvided: boolean): number {
   let score = 0;
@@ -120,14 +140,16 @@ export function AmbassadorWidget() {
   const [typing, setTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [intentScore, setIntentScore] = useState(0);
+  const [noraLeadId, setNoraLeadId] = useState<string | null>(null);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [dismissed, setDismissed] = useState(false);
   const [noraRestMode, setNoraRestMode] = useState(false);
 
   // Guided mode state
   const [guidedMode, setGuidedMode] = useState(true);
-  const [guidedStep, setGuidedStep] = useState(0); // 0 = not started, 1-5 = questions, 6 = whatsapp, 7 = done
+  const [guidedStep, setGuidedStep] = useState(0); // 0 = not started, 1 = preferredName, 2-6 = questions, 7 = whatsapp, 8 = comfortHours, 9 = done
   const [guidedAnswers, setGuidedAnswers] = useState<GuidedAnswer>({});
+  const [preferredNameInput, setPreferredNameInput] = useState('');
   const [whatsappInput, setWhatsappInput] = useState('');
   const [guidedComplete, setGuidedComplete] = useState(false);
 
@@ -220,8 +242,15 @@ export function AmbassadorWidget() {
 
     if (messages.length === 0) {
       await initConversation(active);
-      // If guided mode, kick off step 1
+      // If guided mode, kick off step 1 (preferred name) with time-based greeting
       if (guidedMode) {
+        const greeting = getTimeGreeting();
+        const greetingMsg: ChatMessage = {
+          role: 'ambassador',
+          content: `${greeting}! I'm ${active.name}, your COO at Property Herald. What should I call you?`,
+          timestamp: new Date().toISOString(),
+        };
+        setMessages([greetingMsg]);
         setGuidedStep(1);
       }
     }
@@ -240,11 +269,13 @@ export function AmbassadorWidget() {
     const nextStep = guidedStep + 1;
 
     let ambassadorContent = '';
-    if (nextStep <= 5) {
-      const nextQ = GUIDED_QUESTIONS[nextStep - 1];
+    if (nextStep <= 6) {
+      const nextQ = GUIDED_QUESTIONS[nextStep - 2]; // steps 2-6 map to questions 0-4
       ambassadorContent = nextQ.question;
-    } else if (nextStep === 6) {
-      ambassadorContent = 'Almost done! Share your WhatsApp number so our team can reach you with matching properties. (You can skip this step.)';
+    } else if (nextStep === 7) {
+      ambassadorContent = 'Almost done! Share your WhatsApp number so our team can reach you with matching properties. You can skip this step if you prefer.';
+    } else if (nextStep === 8) {
+      ambassadorContent = 'Last question! What hours work best for a call back?';
     }
 
     const ambassadorMsg: ChatMessage = {
@@ -253,7 +284,7 @@ export function AmbassadorWidget() {
       timestamp: new Date().toISOString(),
     };
 
-    const updatedMessages = nextStep <= 6
+    const updatedMessages = nextStep <= 8
       ? [...messages, userMsg, ambassadorMsg]
       : [...messages, userMsg];
 
@@ -276,57 +307,103 @@ export function AmbassadorWidget() {
 
   const handleWhatsappSubmit = useCallback(async (skip = false) => {
     const wp = skip ? '' : whatsappInput.trim();
-    const finalScore = calcScore(guidedAnswers, !skip && wp.length > 0);
-    setIntentScore(finalScore);
+    const score = calcScore(guidedAnswers, !skip && wp.length > 0);
+    setIntentScore(score);
 
-    const completionMsg: ChatMessage = {
+    const userMsg = skip ? null : { role: 'user' as const, content: wp, timestamp: new Date().toISOString() };
+    const nextQ = GUIDED_QUESTIONS[5]; // comfortHours question
+    const ambassadorMsg: ChatMessage = {
       role: 'ambassador',
-      content: `Thanks! Based on your answers, your interest score is **${finalScore}/100**. I've noted your preferences — ${guidedAnswers.dealType?.toLowerCase() ?? 'property'} in **${guidedAnswers.city ?? 'your chosen city'}**, budget **${guidedAnswers.budget ?? 'flexible'}**. You can register as a buyer to unlock full listing access and get matched with verified developers!`,
+      content: nextQ.question,
       timestamp: new Date().toISOString(),
     };
 
-    const updatedMessages = skip
-      ? [...messages, completionMsg]
-      : [...messages, { role: 'user' as const, content: wp, timestamp: new Date().toISOString() }, completionMsg];
+    const updatedMessages = userMsg
+      ? [...messages, userMsg, ambassadorMsg]
+      : [...messages, ambassadorMsg];
 
     setMessages(updatedMessages);
-    setGuidedStep(7);
+    setGuidedStep(8); // move to comfort hours step
+
+    if (conversationId) {
+      await supabase
+        .from('ambassador_conversations')
+        .update({
+          messages_json: updatedMessages,
+          intent_score: score,
+        })
+        .eq('id', conversationId);
+    }
+  }, [guidedAnswers, whatsappInput, messages, conversationId]);
+
+  const handlePreferredNameSubmit = useCallback(async () => {
+    const name = preferredNameInput.trim();
+    if (!name) return;
+    const newAnswers = { ...guidedAnswers, preferredName: name };
+    setGuidedAnswers(newAnswers);
+
+    const userMsg: ChatMessage = { role: 'user', content: name, timestamp: new Date().toISOString() };
+    const firstQ = GUIDED_QUESTIONS[0];
+    const ambassadorMsg: ChatMessage = { role: 'ambassador', content: firstQ.question, timestamp: new Date().toISOString() };
+    const updatedMessages = [...messages, userMsg, ambassadorMsg];
+    setMessages(updatedMessages);
+    setGuidedStep(2);
+    setPreferredNameInput('');
+
+    if (conversationId) {
+      await supabase.from('ambassador_conversations').update({ messages_json: updatedMessages }).eq('id', conversationId);
+    }
+  }, [guidedAnswers, preferredNameInput, messages, conversationId]);
+
+  const handleComfortHoursSubmit = useCallback(async (answer: string) => {
+    const newAnswers = { ...guidedAnswers, comfortHours: answer };
+    setGuidedAnswers(newAnswers);
+    const finalScore = calcScore(newAnswers, !!guidedAnswers.whatsapp);
+    setIntentScore(finalScore);
+
+    const userMsg: ChatMessage = { role: 'user', content: answer, timestamp: new Date().toISOString() };
+    const completionMsg: ChatMessage = {
+      role: 'ambassador',
+      content: `Thank you so much${guidedAnswers.preferredName ? ', ' + guidedAnswers.preferredName : ''}! I've noted your preferences — ${guidedAnswers.dealType?.toLowerCase() ?? 'property'} in ${guidedAnswers.city ?? 'your chosen city'}, budget ${guidedAnswers.budget ?? 'flexible'}. You can register as a buyer to unlock full listing access and get matched with verified developers!`,
+      timestamp: new Date().toISOString(),
+    };
+    const updatedMessages = [...messages, userMsg, completionMsg];
+    setMessages(updatedMessages);
+    setGuidedStep(9);
     setGuidedMode(false);
     setGuidedComplete(true);
     localStorage.setItem('ph_guided_complete', '1');
 
-    // Save buyer record to DB (anon insert)
     const budgetMap: Record<string, { min: number; max: number }> = {
-      'Under ₹50 Lakhs': { min: 0, max: 5000000 },
-      '₹50L – ₹1 Crore': { min: 5000000, max: 10000000 },
-      '₹1Cr – ₹2 Crore': { min: 10000000, max: 20000000 },
-      '₹2Cr – ₹5 Crore': { min: 20000000, max: 50000000 },
-      'Above ₹5 Crore': { min: 50000000, max: 999999999 },
+      'Under Rs50 Lakhs': { min: 0, max: 5000000 },
+      'Rs50L to Rs1 Crore': { min: 5000000, max: 10000000 },
+      'Rs1Cr to Rs2 Crore': { min: 10000000, max: 20000000 },
+      'Rs2Cr to Rs5 Crore': { min: 20000000, max: 50000000 },
+      'Above Rs5 Crore': { min: 50000000, max: 999999999 },
     };
     const budgetRange = guidedAnswers.budget ? budgetMap[guidedAnswers.budget] : null;
-
     const dealTypeMap: Record<string, string> = {
-      'Buy a Property': 'buy',
-      'Rent a Property': 'rent',
-      'Invest in Real Estate': 'invest',
+      'I want to buy a property': 'buy',
+      'I am looking to rent': 'rent',
+      'I am exploring investments': 'invest',
     };
     const propTypeMap: Record<string, string> = {
       'Residential': 'residential',
       'Commercial': 'commercial',
-      'Both / Not Sure': 'both',
+      'Both or not sure yet': 'both',
     };
     const timelineMap: Record<string, string> = {
-      'Immediately': 'immediate',
-      'Within 3 Months': '3_months',
-      'Within 6 Months': '6_months',
-      'Within 1 Year': '1_year',
-      'Just Exploring': 'flexible',
+      'Right away': 'immediate',
+      'Within 3 months': '3_months',
+      'Within 6 months': '6_months',
+      'Within a year': '1_year',
+      'Just exploring for now': 'flexible',
     };
 
     await supabase.from('buyers').insert({
-      full_name: '',
+      full_name: guidedAnswers.preferredName ?? '',
       email: '',
-      phone: wp || '',
+      phone: guidedAnswers.whatsapp ?? '',
       city_preference: guidedAnswers.city ?? null,
       budget_label: guidedAnswers.budget ?? null,
       budget_min: budgetRange?.min ?? null,
@@ -339,6 +416,17 @@ export function AmbassadorWidget() {
       source: 'widget',
     }).catch(() => {});
 
+    // Also insert into leads table (Section 5)
+    await supabase.from('leads').insert({
+      name: guidedAnswers.preferredName ?? '',
+      phone: guidedAnswers.whatsapp ?? '',
+      message: `Nora chat: ${guidedAnswers.dealType ?? ''} / ${guidedAnswers.city ?? ''} / ${guidedAnswers.budget ?? ''}`,
+      source: 'nora',
+      intent_score: finalScore,
+      comfort_hours: answer,
+      preferred_name: guidedAnswers.preferredName ?? null,
+    }).catch(() => {});
+
     if (conversationId) {
       await supabase
         .from('ambassador_conversations')
@@ -349,7 +437,7 @@ export function AmbassadorWidget() {
         })
         .eq('id', conversationId);
     }
-  }, [guidedAnswers, whatsappInput, messages, conversationId]);
+  }, [guidedAnswers, messages, conversationId]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || !active) return;
@@ -370,8 +458,9 @@ export function AmbassadorWidget() {
     setIntentScore(newScore);
 
     let reply = "I'm here to help! What would you like to know about Property Herald?";
+    let returnedLeadId: string | null = null;
     try {
-      const supabaseUrl = '/supabase';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       const res = await fetch(`${supabaseUrl}/functions/v1/nora-chat`, {
         method: 'POST',
@@ -379,11 +468,12 @@ export function AmbassadorWidget() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({ messages: updated, user_id: user?.id || null }),
+        body: JSON.stringify({ messages: updated, user_id: user?.id || null, lead_id: noraLeadId }),
       });
       if (res.ok) {
         const data = await res.json();
         if (data.reply) reply = data.reply;
+        if (data.lead_id) { setNoraLeadId(data.lead_id); returnedLeadId = data.lead_id; }
       }
     } catch {
       // fallback to default reply
@@ -431,7 +521,8 @@ export function AmbassadorWidget() {
     );
   }
 
-  const currentGuidedQuestion = guidedStep >= 1 && guidedStep <= 5 ? GUIDED_QUESTIONS[guidedStep - 1] : null;
+  const currentGuidedQuestion = guidedStep >= 2 && guidedStep <= 6 ? GUIDED_QUESTIONS[guidedStep - 2] : null;
+  const comfortHoursQuestion = GUIDED_QUESTIONS[5];
 
   return (
     <>
@@ -483,8 +574,8 @@ export function AmbassadorWidget() {
             <div className="flex-1 min-w-0">
               <p className="text-cream font-semibold text-sm truncate">{active.name}</p>
               <p className="text-cream/50 text-xs truncate">
-                {guidedMode && guidedStep >= 1 && guidedStep <= 6
-                  ? `Question ${Math.min(guidedStep, 6)} of 6`
+                {guidedMode && guidedStep >= 1 && guidedStep <= 8
+                  ? `Step ${guidedStep} of 8`
                   : `${active.language} · Property Herald`}
               </p>
             </div>
@@ -537,7 +628,31 @@ export function AmbassadorWidget() {
                   </div>
                 ))}
 
-                {/* Guided question options */}
+                {/* Step 1: Preferred name input */}
+                {guidedMode && guidedStep === 1 && (
+                  <div className="space-y-2 pt-1">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={preferredNameInput}
+                        onChange={e => setPreferredNameInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && preferredNameInput.trim()) handlePreferredNameSubmit(); }}
+                        placeholder="Your first name"
+                        className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-navy outline-none focus:border-gold/50 bg-white"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handlePreferredNameSubmit}
+                        disabled={preferredNameInput.trim().length < 1}
+                        className="px-4 py-2.5 rounded-xl bg-navy text-cream text-sm font-medium hover:bg-navy/90 disabled:opacity-40 transition-all"
+                      >
+                        Continue
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Steps 2-6: Guided question options */}
                 {guidedMode && currentGuidedQuestion && (
                   <div className="space-y-2 pt-1">
                     {currentGuidedQuestion.options.map(opt => (
@@ -553,8 +668,8 @@ export function AmbassadorWidget() {
                   </div>
                 )}
 
-                {/* Q6: WhatsApp input */}
-                {guidedMode && guidedStep === 6 && (
+                {/* Step 7: WhatsApp input */}
+                {guidedMode && guidedStep === 7 && (
                   <div className="space-y-2 pt-1">
                     <div className="flex gap-2">
                       <input
@@ -582,8 +697,24 @@ export function AmbassadorWidget() {
                   </div>
                 )}
 
+                {/* Step 8: Comfort hours options */}
+                {guidedMode && guidedStep === 8 && comfortHoursQuestion && (
+                  <div className="space-y-2 pt-1">
+                    {comfortHoursQuestion.options?.map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => handleComfortHoursSubmit(opt)}
+                        className="w-full text-left px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm text-navy font-medium hover:border-gold/50 hover:bg-gold/5 transition-all flex items-center justify-between group shadow-sm"
+                      >
+                        {opt}
+                        <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-gold transition-colors flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Guided complete — CTA */}
-                {guidedComplete && guidedStep === 7 && (
+                {guidedComplete && guidedStep === 9 && (
                   <div className="bg-gradient-to-br from-navy/5 to-gold/10 rounded-2xl p-4 border border-gold/20 space-y-3">
                     <p className="text-xs text-gray-600">Register as a buyer to unlock matched listings, show apartment bookings, and priority developer access.</p>
                     <Link

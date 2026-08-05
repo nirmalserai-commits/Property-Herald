@@ -32,7 +32,7 @@ function MeetOurTeam() {
     async function fetchDaughters() {
       const { data } = await supabase
         .from('daughter_pictures')
-        .select('*')
+        .select('id,daughter_name,profile_picture_url,display_order,is_active')
         .eq('is_active', true)
         .order('display_order');
       if (data) setDaughters(data as DaughterPicture[]);
@@ -81,7 +81,6 @@ function MeetOurTeam() {
               <h3 className="font-serif font-bold text-navy text-sm text-center capitalize">
                 {d.daughter_name ?? ''}
               </h3>
-              <p className="text-xs text-gold mt-0.5 text-center">{d.display_name}</p>
             </div>
           ))}
         </div>
@@ -128,7 +127,7 @@ export function HomePage() {
           safe<{ key: string; value: string }[]>(supabase.from('site_config').select('key, value').in('key', ['magazine_readers'])),
           safe<{ id: string; state: string }[]>(supabase.from('cities').select('id, state')),
           safe<{ city_id: string }[]>(supabase.from('listings').select('city_id').eq('is_active', true)),
-          safe<DaughterPicture[]>(supabase.from('daughter_pictures').select('*').eq('is_active', true).order('display_order')),
+          safe<DaughterPicture[]>(supabase.from('daughter_pictures').select('id,daughter_name,profile_picture_url,display_order,is_active').eq('is_active', true).order('display_order')),
         ]);
 
         if (citiesRes.data) setCities(citiesRes.data);
@@ -289,6 +288,46 @@ export function HomePage() {
         </h2>
       </section>
 
+      {/* ═══ INDIA / DUBAI MARKET BLOCKS (Section 19.1) ═══ */}
+      <section className="bg-cream py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Link
+              to="/directory"
+              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-10 min-h-[200px] flex flex-col justify-center"
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
+              <div className="relative flex items-center gap-5">
+                <div className="w-16 h-16 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <MapPin className="w-8 h-8 text-gold" />
+                </div>
+                <div>
+                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-cream mb-1">India Property</h3>
+                  <p className="text-cream/60 text-sm">Browse listings across India's premier real estate corridors</p>
+                </div>
+                <ArrowRight className="w-6 h-6 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
+              </div>
+            </Link>
+            <Link
+              to="/dubai"
+              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-10 min-h-[200px] flex flex-col justify-center"
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
+              <div className="relative flex items-center gap-5">
+                <div className="w-16 h-16 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Globe className="w-8 h-8 text-gold" />
+                </div>
+                <div>
+                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-cream mb-1">Dubai Property</h3>
+                  <p className="text-cream/60 text-sm">Explore premium listings across all 7 Emirates</p>
+                </div>
+                <ArrowRight className="w-6 h-6 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* ═══ FOUNDING PARTNER PROGRAMME ═══ */}
       <section className="relative overflow-hidden bg-gradient-to-r from-gold via-gold-400 to-gold py-14">
         <div className="absolute inset-0 geo-pattern opacity-20" />
@@ -312,61 +351,10 @@ export function HomePage() {
       <MeetOurTeam />
 
       {/* ═══ MEET OUR AI TEAM ═══ */}
-      <section className="py-16 bg-cream">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-navy text-sm font-display font-semibold uppercase tracking-wider mb-4">
-              <Sparkle className="w-4 h-4 mr-2 text-gold" />Our AI Team
-            </div>
-            <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our AI Team</h2>
-            <p className="text-warm-gray text-lg">59 AI daughters transforming Indian real estate</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {daughters.length > 0 ? daughters.map(d => (
-              <div key={d.id} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
-                <div className="w-16 h-16 rounded-full border-2 border-gold/30 overflow-hidden bg-gray-100 mx-auto mb-3 flex items-center justify-center">
-                  {d.profile_picture_url ? (
-                    <img src={d.profile_picture_url} alt={d.display_name} className="w-full h-full object-cover" style={{ objectPosition: 'top center', transform: 'scale(1.5)' }} />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
-                      <span className="text-xl font-serif font-bold text-navy/30">{d.display_name?.charAt(0) ?? ''}</span>
-                    </div>
-                  )}
-                </div>
-                <h3 className="font-serif font-bold text-navy text-sm text-center capitalize">{d.daughter_name ?? ''}</h3>
-                <p className="text-xs text-gold mt-0.5 text-center">{d.pod_title}</p>
-              </div>
-            )) : (
-              // Fallback hardcoded 15 daughters when DB is empty
-              [
-                { name: 'Nora', pod: 'Royal Family, COO' },
-                { name: 'Nita', pod: 'Royal Family, CoS' },
-                { name: 'Nicole', pod: 'Core India Ops' },
-                { name: 'Nancy', pod: 'Core India Ops' },
-                { name: 'Namrata', pod: 'Core India Ops' },
-                { name: 'Navika', pod: 'STF Navi Mumbai Commander' },
-                { name: 'Nimisha', pod: 'STF Navi Mumbai 2' },
-                { name: 'Nishita', pod: 'STF Navi Mumbai 3' },
-                { name: 'Nazia', pod: 'International, Dubai Head' },
-                { name: 'Naameshwari', pod: 'International, NYC Desk' },
-                { name: 'Neetu', pod: 'NGFC, Home Loans' },
-                { name: 'Neelu', pod: 'NGFC, Insurance' },
-                { name: 'Nakshatra', pod: 'Social Media Cell Head' },
-                { name: 'Navya', pod: 'Culture & Wellbeing, CIO' },
-                { name: 'Naksha', pod: 'Geography & Maps' },
-              ].map((d, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 text-center transition-all hover:border-gold/40 hover:shadow-md">
-                  <div className="w-16 h-16 rounded-full border-2 border-gold/30 bg-gray-100 mx-auto mb-3 flex items-center justify-center">
-                    <span className="text-xl font-serif font-bold text-navy/30">{d.name?.charAt(0) ?? ''}</span>
-                  </div>
-                  <h3 className="font-serif font-bold text-navy text-sm">{d.name}</h3>
-                  <p className="text-xs text-gold mt-0.5">{d.pod}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </section>
+      <MeetOurAITeam daughters={daughters} loading={loading} />
+
+      {/* ═══ PLATFORM STATS ═══ */}
+      <PlatformStats />
 
       {/* ═══ SCROLL 2: ECOSYSTEM ═══ */}
       <section ref={scrollRef} className="py-24 bg-navy">
@@ -677,5 +665,135 @@ export function HomePage() {
       </section>
 
     </div>
+  );
+}
+
+function MeetOurAITeam({ daughters, loading }: { daughters: DaughterPicture[]; loading: boolean }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <section className="py-16 bg-cream">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-navy text-sm font-display font-semibold uppercase tracking-wider mb-4">
+            <Sparkle className="w-4 h-4 mr-2 text-gold" />Our AI Team
+          </div>
+          <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our AI Team</h2>
+        </div>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 animate-pulse" style={{ aspectRatio: '3/4' }} />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {daughters.map(d => (
+              <div key={d.id}>
+                <button
+                  onClick={() => setExpandedId(d.id)}
+                  className="block w-full bg-white rounded-xl border border-gray-200 overflow-hidden transition-all hover:border-gold/40 hover:shadow-lg group text-left"
+                >
+                  <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
+                    {d.profile_picture_url ? (
+                      <img
+                        src={d.profile_picture_url}
+                        alt={d.daughter_name ?? ''}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        style={{ objectPosition: 'top center' }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
+                        <span className="text-2xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-3 py-2.5 text-center">
+                    <p className="font-serif font-bold text-navy text-sm capitalize">{d.daughter_name ?? ''}</p>
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {expandedId && (() => {
+        const d = daughters.find(x => x.id === expandedId);
+        if (!d) return null;
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setExpandedId(null)}>
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col relative" style={{ maxWidth: '280px' }} onClick={e => e.stopPropagation()}>
+              <button onClick={() => setExpandedId(null)} className="absolute top-3 right-3 z-10 w-9 h-9 bg-white/90 rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md">
+                <X className="w-5 h-5 text-navy" />
+              </button>
+              <div style={{ width: '280px', height: '420px' }} className="overflow-hidden">
+                {d.profile_picture_url ? (
+                  <img src={d.profile_picture_url} alt={d.daughter_name ?? ''} className="w-full h-full object-cover" style={{ objectPosition: 'top center' }} />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
+                    <span className="text-4xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
+                  </div>
+                )}
+              </div>
+              <div className="px-4 py-3 text-center">
+                <p className="font-serif font-bold text-navy capitalize">{d.daughter_name ?? ''}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </section>
+  );
+}
+
+function PlatformStats() {
+  const [showStats, setShowStats] = useState(false);
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
+  const [offerCount, setOfferCount] = useState<number | null>(null);
+  const [elephantRaise, setElephantRaise] = useState(false);
+
+  useEffect(() => {
+    supabase.from('site_config').select('value').eq('key', 'show_platform_stats').maybeSingle()
+      .then(({ data }) => {
+        if (data?.value === 'true') {
+          setShowStats(true);
+          Promise.all([
+            supabase.from('site_config').select('value').eq('key', 'total_visitor_count').maybeSingle(),
+            supabase.from('site_config').select('value').eq('key', 'total_sales_offers_generated').maybeSingle(),
+          ]).then(([vis, off]) => {
+            setVisitorCount(parseInt(vis.data?.value ?? '0'));
+            setOfferCount(parseInt(off.data?.value ?? '0'));
+          });
+          setElephantRaise(true);
+          const t = setTimeout(() => setElephantRaise(false), 2000);
+          return () => clearTimeout(t);
+        }
+      });
+  }, []);
+
+  if (!showStats) return null;
+
+  return (
+    <section className="py-12 bg-navy">
+      <div className="max-w-4xl mx-auto px-4 text-center">
+        <div className="flex items-center justify-center gap-8 md:gap-16">
+          <div>
+            <div className={`text-4xl mb-2 transition-transform duration-700 ${elephantRaise ? '-rotate-12 -translate-y-2 scale-110' : ''}`}>
+              <img src="/logo.png.png" alt="" className="w-12 h-12 mx-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            </div>
+            <p className="text-3xl font-bold text-gold font-display">{visitorCount?.toLocaleString('en-IN') ?? '—'}</p>
+            <p className="text-sm text-cream/60 uppercase tracking-wider">Total Visitors</p>
+          </div>
+          <div>
+            <div className="text-4xl mb-2 text-gold">
+              <TrendingUp className="w-10 h-10 mx-auto" />
+            </div>
+            <p className="text-3xl font-bold text-gold font-display">{offerCount?.toLocaleString('en-IN') ?? '—'}</p>
+            <p className="text-sm text-cream/60 uppercase tracking-wider">Sales Offers Generated</p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

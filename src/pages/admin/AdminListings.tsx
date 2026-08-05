@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import type { Listing } from '../../types/database';
-import { Search, Check, X, Flag, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Check, X, Flag, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected' | 'flagged';
 
@@ -27,6 +27,7 @@ export function AdminListings() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectModal, setRejectModal] = useState<Listing | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -83,6 +84,12 @@ export function AdminListings() {
             ))}
           </div>
           <p className="text-sm text-gray-500 ml-auto">{total} listings</p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-navy text-cream rounded-xl text-sm font-medium hover:bg-navy-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add Listing
+          </button>
         </div>
 
         {/* Table */}
@@ -208,6 +215,163 @@ export function AdminListings() {
           </div>
         </div>
       )}
+      {/* Add Listing Modal */}
+      {showAddModal && (
+        <AddListingModal onClose={() => setShowAddModal(false)} onSaved={() => { setShowAddModal(false); fetchListings(); }} />
+      )}
     </AdminLayout>
+  );
+}
+
+const EMIRATES = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
+const VIEWS = ['Sea View', 'Garden View', 'Golf Course View', 'City View', 'Pool View', 'Standard/No Specific View'];
+
+function AddListingModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { user } = useAuth();
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  const [profiles, setProfiles] = useState<{ id: string; business_name: string }[]>([]);
+  const [form, setForm] = useState({
+    title: '', description: '', price: '', property_type: 'Residential', property_view: '',
+    contact_phone: '', city_id: '', emirate: '', market_track: 'india', owner_id: '',
+    is_off_plan: false, escrow_account_status: '', escrow_account_number: '', rera_qr_code: '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('cities').select('id, name').eq('is_active', true).order('name'),
+      supabase.from('profiles').select('id, business_name').order('business_name'),
+    ]).then(([cityRes, profRes]) => {
+      if (cityRes.data) setCities(cityRes.data);
+      if (profRes.data) setProfiles(profRes.data as { id: string; business_name: string }[]);
+    });
+  }, []);
+
+  const isDubai = form.market_track === 'dubai';
+
+  async function handleSave() {
+    setError(null);
+    if (!form.title.trim() || !form.price) {
+      setError('Title and price are required.');
+      return;
+    }
+    setSaving(true);
+    const insertData: Record<string, unknown> = {
+      title: form.title,
+      description: form.description,
+      price: parseInt(form.price),
+      property_types: [form.property_type],
+      deal_types: ['Buy'],
+      moderation_status: 'approved',
+      approval_level: 'nirmal_approved',
+      is_active: true,
+      market_track: form.market_track,
+      property_view: form.property_view || null,
+      contact_phone: form.contact_phone || null,
+      is_dubai: isDubai,
+      emirate: isDubai ? form.emirate : null,
+      escrow_account_status: isDubai && form.is_off_plan ? form.escrow_account_status : null,
+      escrow_account_number: isDubai && form.is_off_plan ? form.escrow_account_number : null,
+      rera_qr_code: isDubai && form.emirate === 'Dubai' ? form.rera_qr_code : null,
+    };
+    if (form.owner_id) insertData.profile_id = form.owner_id;
+    else if (user) insertData.profile_id = user.id;
+    if (!isDubai) insertData.city_id = form.city_id || null;
+
+    const { error: insErr } = await supabase.from('listings').insert(insertData);
+    if (insErr) {
+      setError(insErr.message);
+    } else {
+      if (user) await logAdminAction(supabase, user.email!, 'admin_create_listing', 'listings', undefined, { title: form.title });
+      onSaved();
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif font-bold text-navy text-lg">Add Listing</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+        </div>
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+          <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="input-field" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="input-field resize-none" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Price</label>
+            <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} className="input-field" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Market Track</label>
+            <select value={form.market_track} onChange={e => setForm(f => ({ ...f, market_track: e.target.value }))} className="input-field">
+              <option value="india">India</option>
+              <option value="dubai">Dubai</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">View</label>
+          <select value={form.property_view} onChange={e => setForm(f => ({ ...f, property_view: e.target.value }))} className="input-field">
+            <option value="">Select...</option>
+            {VIEWS.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+        {!isDubai ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">City</label>
+            <select value={form.city_id} onChange={e => setForm(f => ({ ...f, city_id: e.target.value }))} className="input-field">
+              <option value="">Select city...</option>
+              {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Emirate</label>
+            <select value={form.emirate} onChange={e => setForm(f => ({ ...f, emirate: e.target.value }))} className="input-field">
+              <option value="">Select emirate...</option>
+              {EMIRATES.map(em => <option key={em} value={em}>{em}</option>)}
+            </select>
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Assign Owner (optional)</label>
+          <select value={form.owner_id} onChange={e => setForm(f => ({ ...f, owner_id: e.target.value }))} className="input-field">
+            <option value="">House/Admin-owned</option>
+            {profiles.map(p => <option key={p.id} value={p.id}>{p.business_name}</option>)}
+          </select>
+        </div>
+        {isDubai && (
+          <div className="space-y-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <label className="flex items-center gap-2 text-sm font-medium text-navy">
+              <input type="checkbox" checked={form.is_off_plan} onChange={e => setForm(f => ({ ...f, is_off_plan: e.target.checked }))} className="rounded" />
+              Off-plan property
+            </label>
+            {form.is_off_plan && (
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" value={form.escrow_account_status} onChange={e => setForm(f => ({ ...f, escrow_account_status: e.target.value }))} className="input-field" placeholder="Escrow status" />
+                <input type="text" value={form.escrow_account_number} onChange={e => setForm(f => ({ ...f, escrow_account_number: e.target.value }))} className="input-field" placeholder="Escrow number" />
+              </div>
+            )}
+            {form.emirate === 'Dubai' && (
+              <input type="text" value={form.rera_qr_code} onChange={e => setForm(f => ({ ...f, rera_qr_code: e.target.value }))} className="input-field" placeholder="RERA QR code URL" />
+            )}
+          </div>
+        )}
+        <button onClick={handleSave} disabled={saving || !form.title.trim()}
+          className="w-full px-4 py-2.5 bg-navy text-cream rounded-xl text-sm font-medium hover:bg-navy-800 disabled:opacity-50 flex items-center justify-center gap-2">
+          {saving ? <span className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin" /> : <Plus className="w-4 h-4" />}
+          Create Listing
+        </button>
+      </div>
+    </div>
   );
 }

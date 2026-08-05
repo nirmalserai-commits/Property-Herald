@@ -42,6 +42,9 @@ export interface Category {
   created_at: string;
 }
 
+export type MarketTrack = 'india' | 'dubai';
+export type AccountStatus = 'active' | 'suspended';
+
 export interface Profile {
   id: string;
   business_name: string;
@@ -60,6 +63,12 @@ export interface Profile {
   subscription_end_date: string | null;
   verified_badge_active: boolean;
   verified_badge_expires_at: string | null;
+  role: string | null;
+  is_founding_partner: boolean | null;
+  market_track: MarketTrack;
+  account_status: AccountStatus;
+  crm_expires_at: string | null;
+  wallet_currency: 'INR' | 'AED';
   created_at: string;
   updated_at: string;
   city?: City;
@@ -88,10 +97,20 @@ export interface Listing {
   is_dubai?: boolean;
   ownership_type?: string | null;
   escrow_account_status?: string | null;
+  escrow_account_number?: string | null;
+  rera_qr_code?: string | null;
+  emirate?: string | null;
   trade_licence_number?: string | null;
   emirates_id?: string | null;
   size_sqft?: number | null;
   approval_level?: string | null;
+  market_track?: MarketTrack;
+  property_view?: string | null;
+  contact_phone?: string | null;
+  photos?: string[] | null;
+  price?: number | null;
+  price_min?: number | null;
+  price_max?: number | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -182,6 +201,7 @@ export interface TokenBundle {
   bonus_tokens: number;
   total_tokens: number;
   price_inr: number;
+  price_aed?: number | null;
   is_active: boolean;
   created_at: string;
 }
@@ -191,6 +211,7 @@ export interface TokenWallet {
   user_id: string;
   balance: number;
   low_balance_alerted_at: string | null;
+  wallet_currency?: 'INR' | 'AED';
   created_at: string;
   updated_at: string;
 }
@@ -645,7 +666,74 @@ export interface DaughterPicture {
   display_name: string;
   pod_title: string;
   profile_picture_url: string | null;
+  full_body_picture_url?: string | null;
   display_order: number;
   is_active: boolean;
   updated_at: string;
+}
+
+export interface Lead {
+  id: string;
+  listing_id: string | null;
+  name: string;
+  phone: string;
+  email: string | null;
+  message: string | null;
+  created_at: string;
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+  source: string;
+  notes: string | null;
+  owner_id: string | null;
+  assigned_to: string | null;
+  intent_score: number;
+  comfort_hours: string | null;
+  preferred_name: string | null;
+  listing?: Listing;
+}
+
+export type DealBonusType = 'flat_tokens' | 'percentage';
+
+export interface Deal {
+  id: string;
+  name: string;
+  trigger_amount: number;
+  bonus_type: DealBonusType;
+  bonus_value: number;
+  bonus_validity_days: number;
+  non_token_perk: string | null;
+  market_track: 'india' | 'dubai' | 'both';
+  active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PackageItem {
+  item_type: 'premium_listings' | 'brochure_languages' | 'banners' | 'videos' | 'crm_days' | 'token_bonus' | 'custom_line';
+  quantity: number;
+}
+
+export interface Package {
+  id: string;
+  name: string;
+  audience: 'developer' | 'agent' | 'both';
+  price_tokens: number;
+  billing_type: 'one_time' | 'recurring_manual';
+  contents: PackageItem[];
+  market_track: 'india' | 'dubai' | 'both';
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AmbassadorAssignment {
+  id: string;
+  daughter_name: string;
+  developer_id: string;
+  market_scope: string;
+  start_date: string;
+  end_date: string | null;
+  cooldown_until: string | null;
+  created_at: string;
 }

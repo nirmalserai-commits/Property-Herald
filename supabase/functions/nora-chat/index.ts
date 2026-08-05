@@ -270,7 +270,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { messages, user_id } = await req.json();
+    const { messages, user_id, lead_id } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return new Response(
@@ -279,6 +279,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
       return new Response(
@@ -287,11 +289,63 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch conversation memory if user_id is provided
-    let memorySummary = "";
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // Determine time-of-day greeting context
+    const hour = new Date().getHours();
+    let timeContext = "";
+    if (hour < 12) timeContext = "\n\n## TIME CONTEXT\nIt is currently morning in India. You may naturally say 'Good morning' if it fits the conversation flow.";
+    else if (hour < 17) timeContext = "\n\n## TIME CONTEXT\nIt is currently afternoon in India. You may naturally say 'Good afternoon' if it fits the conversation flow.";
+    else if (hour < 21) timeContext = "\n\n## TIME CONTEXT\nIt is currently evening in India. You may naturally say 'Good evening' if it fits the conversation flow.";
+    else timeContext = "\n\n## TIME CONTEXT\nIt is currently late night in India. Be warm and gentle — the buyer may be browsing late.";
 
+    // Create a lead row on first user message from an unrecognized visitor
+    // The widget sends a greeting first, so the first user message is typically at index 1
+    let resolvedLeadId = lead_id || null;
+    const hasUserMsg = messages.some((m: { role: string }) => m.role === "user");
+    if (!resolvedLeadId && hasUserMsg && messages.filter((m: { role: string }) => m.role === "user").length === 1) {
+      try {
+        const firstUserMsg = messages.find((m: { role: string }) => m.role === "user");
+        const firstMsg = (firstUserMsg?.content ?? messages[0].content).slice(0, 500);
+        const leadBody: Record<string, unknown> = {
+          name: "Nora Chat Visitor",
+          phone: "",
+          message: firstMsg,
+          source: "nora",
+          intent_score: 10,
+          status: "new",
+        };
+        if (user_id) leadBody.owner_id = user_id;
+        const leadInsertRes = await fetch(`${supabaseUrl}/rest/v1/leads`, {
+          method: "POST",
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json", "Prefer": "return=representation" },
+          body: JSON.stringify(leadBody),
+        });
+        if (leadInsertRes.ok) {
+          const leadRows = await leadInsertRes.json();
+          if (leadRows && leadRows.length > 0) resolvedLeadId = leadRows[0].id;
+        }
+      } catch { /* lead creation failed — continue without */ }
+    }
+
+    // Fetch preferred_name from leads table if we have a lead_id
+    let personalContext = "";
+    if (resolvedLeadId) {
+      try {
+        const leadRes = await fetch(`${supabaseUrl}/rest/v1/leads?id=eq.${resolvedLeadId}&select=preferred_name,name`, {
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        });
+        if (leadRes.ok) {
+          const leadData = await leadRes.json();
+          if (leadData && leadData.length > 0) {
+            const preferredName = leadData[0].preferred_name || leadData[0].name;
+            if (preferredName && preferredName !== "Nora Chat Visitor") {
+              personalContext = `\n\n## BUYER'S PREFERRED NAME\nThe buyer's preferred name is "${preferredName}". Use it naturally in conversation — not every message, but when it feels warm and appropriate. Never overuse it.`;
+            }
+          }
+        }
+      } catch { /* lead fetch failed — continue without */ }
+    }
+
+    let memorySummary = "";
     if (user_id) {
       try {
         const memRes = await fetch(`${supabaseUrl}/rest/v1/conversation_memory?user_id=eq.${user_id}&daughter_name=eq.nora&select=summary_text,message_count`, {
@@ -306,7 +360,7 @@ Deno.serve(async (req: Request) => {
       } catch { /* memory fetch failed — continue without */ }
     }
 
-    const systemPromptWithMemory = SYSTEM_PROMPT + memorySummary;
+    const systemPromptWithMemory = SYSTEM_PROMPT + timeContext + personalContext + memorySummary;
 
     const anthropicMessages = messages.map((m: { role: string; content: string }) => ({
       role: m.role === "ambassador" ? "assistant" : "user",
@@ -378,7 +432,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ reply: text }),
+      JSON.stringify({ reply: text, lead_id: resolvedLeadId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
