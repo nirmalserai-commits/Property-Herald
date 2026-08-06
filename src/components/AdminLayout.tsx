@@ -24,6 +24,7 @@ const NAV = [
   { to: '/admin/locations', label: 'Locations', icon: MapPin, exact: false },
   { to: '/admin/hall-of-fame', label: 'Hall of Fame', icon: Award, exact: false },
   { to: '/admin/daughter-pictures', label: 'Team Pictures', icon: Bot, exact: false },
+  { to: '/admin/videos', label: 'Videos', icon: Video, exact: false },
   { to: '/admin/assets', label: 'Assets Area', icon: FolderOpen, exact: false },
   { to: '/admin/token-settings', label: 'Token Settings', icon: Coins, exact: false },
   { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp, exact: false },

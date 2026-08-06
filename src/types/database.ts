@@ -737,3 +737,15 @@ export interface AmbassadorAssignment {
   cooldown_until: string | null;
   created_at: string;
 }
+
+export interface Video {
+  id: string;
+  title: string;
+  description: string | null;
+  video_url: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  display_order: number;
+  active: boolean;
+  created_at: string;
+}

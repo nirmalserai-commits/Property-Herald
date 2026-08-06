@@ -241,7 +241,7 @@ export function HomePage() {
 
   const heroTiles = [
     { title: 'Press & Media', icon: Newspaper, link: '/magazine', comingSoon: false },
-    { title: 'Our Videos', icon: Video, link: '/magazine', comingSoon: false },
+    { title: 'Our Videos', icon: Video, link: '/videos', comingSoon: false },
     { title: 'Home Loans', icon: Landmark, link: '/home-loans', comingSoon: false },
     { title: 'Real Estate Courses', icon: GraduationCap, link: '#', comingSoon: true },
   ];

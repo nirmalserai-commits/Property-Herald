@@ -57,6 +57,8 @@ import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminLocations } from './pages/admin/AdminLocations';
 import { AdminRegistrations } from './pages/admin/AdminRegistrations';
 import { AdminDaughterPictures } from './pages/admin/AdminDaughterPictures';
+import { AdminVideos } from './pages/admin/AdminVideos';
+import { VideosPage } from './pages/VideosPage';
 import { AdminCrm } from './pages/admin/AdminCrm';
 import { AdminDeals } from './pages/admin/AdminDeals';
 import { AdminPackages } from './pages/admin/AdminPackages';
@@ -135,6 +137,7 @@ function AppRoutes() {
       <Route path="/home-loans" element={<HomeLoansPage />} />
       <Route path="/ambassadors" element={<AmbassadorsPage />} />
       <Route path="/dubai" element={<Layout><DubaiPage /></Layout>} />
+      <Route path="/videos" element={<Layout><VideosPage /></Layout>} />
       <Route path="/naksha-report" element={<NakshaReportPage />} />
       <Route path="/greetings" element={<GreetingsVouchersPage />} />
       <Route path="/hall-of-fame" element={<HallOfFamePage />} />
@@ -154,6 +157,7 @@ function AppRoutes() {
       <Route path="/admin/locations" element={<AdminLocations />} />
       <Route path="/admin/hall-of-fame" element={<AdminHallOfFame />} />
       <Route path="/admin/daughter-pictures" element={<AdminDaughterPictures />} />
+      <Route path="/admin/videos" element={<AdminVideos />} />
       <Route path="/admin/assets" element={<AdminAssets />} />
       <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="/admin/broadcast" element={<AdminBroadcast />} />
