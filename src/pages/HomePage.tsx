@@ -6,7 +6,7 @@ import {
   Building2, Users, BookOpen, ArrowRight, MapPin,
   TrendingUp, Sparkles, Check, Bot, ChevronDown,
   Globe, Zap, Award, MessageCircle, Sparkle, Handshake, User,
-  Newspaper, Video, Landmark, GraduationCap,
+  Newspaper, Video, Landmark, GraduationCap, X, Loader2,
 } from 'lucide-react';
 
 interface LiveStats {
@@ -23,75 +23,160 @@ interface CorridorCounts {
   karnataka: number;
 }
 
-// ─── Meet Our Team (dynamic from daughter_pictures table) ───
+// ─── Hero Lead Form Modal ───
 
-function MeetOurTeam() {
-  const [daughters, setDaughters] = useState<DaughterPicture[]>([]);
-  const [loading, setLoading] = useState(true);
+interface LeadFormState {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  message: string;
+}
 
-  useEffect(() => {
-    async function fetchDaughters() {
-      const { data } = await supabase
-        .from('daughter_pictures')
-        .select('id,daughter_name,profile_picture_url,display_order,is_active')
-        .eq('is_active', true)
-        .order('display_order');
-      if (data) setDaughters(data as DaughterPicture[]);
-      setLoading(false);
+function HeroLeadForm({
+  open, onClose, formType,
+}: {
+  open: boolean;
+  onClose: () => void;
+  formType: 'list_business' | 'project_marketing';
+}) {
+  const [form, setForm] = useState<LeadFormState>({ name: '', email: '', phone: '', company: '', message: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+
+  const titles: Record<typeof formType, { title: string; subtitle: string }> = {
+    list_business: {
+      title: 'List Your Business',
+      subtitle: "Tell us about your business and we'll get back to you within 48 hours.",
+    },
+    project_marketing: {
+      title: 'Comprehensive Project Marketing',
+      subtitle: 'Share your project details and our team will reach out to discuss a marketing plan.',
+    },
+  };
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim()) return;
+    setSubmitting(true);
+    setError('');
+    const { error: insertError } = await supabase.from('homepage_leads').insert({
+      form_type: formType,
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone?.trim() || null,
+      company: form.company?.trim() || null,
+      message: form.message?.trim() || null,
+    });
+    setSubmitting(false);
+    if (insertError) {
+      setError('Something went wrong. Please try again or email us directly.');
+      return;
     }
-    fetchDaughters();
-  }, []);
+    setSubmitted(true);
+  }
+
+  function handleClose() {
+    setForm({ name: '', email: '', phone: '', company: '', message: '' });
+    setSubmitted(false);
+    setError('');
+    onClose();
+  }
+
+  if (!open) return null;
 
   return (
-    <section className="py-16 bg-gradient-to-b from-cream to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-navy text-sm font-display font-semibold uppercase tracking-wider mb-4">
-            <Users className="w-4 h-4 mr-2 text-gold" />Our People
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={handleClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 className="text-xl font-serif font-bold text-navy">{titles[formType].title}</h2>
+            <p className="text-sm text-gray-500 mt-1">{titles[formType].subtitle}</p>
           </div>
-          <h2 className="text-3xl md:text-4xl font-serif font-bold text-navy mb-2">Meet Our Team</h2>
-          <p className="text-warm-gray text-lg">The people building India's first AI-powered real estate platform</p>
+          <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-4">
-          {loading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-xl border border-gray-200 animate-pulse" style={{ aspectRatio: '3/4' }} />
-            ))
-          ) : daughters.map((d) => (
-            <div key={d.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="overflow-hidden" style={{ aspectRatio: '3/4' }}>
-                {d.profile_picture_url ? (
-                  <img
-                    src={d.profile_picture_url}
-                    alt={d.daughter_name ?? ''}
-                    className="w-full h-full object-cover"
-                    style={{ objectPosition: 'top center' }}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-navy/10 to-gold/10 flex items-center justify-center">
-                    <span className="text-2xl font-serif font-bold text-navy/30">{(d.daughter_name ?? '?').charAt(0)}</span>
-                  </div>
-                )}
-              </div>
-              <div className="px-3 py-2.5 text-center">
-                <p className="font-serif font-bold text-navy text-sm capitalize">{d.daughter_name ?? ''}</p>
-              </div>
+
+        {submitted ? (
+          <div className="p-8 text-center">
+            <div className="w-14 h-14 bg-green-50 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-7 h-7 text-green-600" />
             </div>
-          ))}
-        </div>
+            <h3 className="text-lg font-serif font-bold text-navy mb-2">Thank you — we've received your request.</h3>
+            <p className="text-sm text-gray-500 mb-6">Our team will review your details and follow up shortly. No commitment is required at this stage.</p>
+            <button onClick={handleClose} className="w-full px-5 py-2.5 bg-navy text-gold rounded-xl font-semibold border border-gold/20 hover:bg-navy/90 transition-colors">
+              Close
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Name *</label>
+              <input
+                type="text" required value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm mt-1 focus:ring-2 focus:ring-gold/30 focus:border-gold/40 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Email *</label>
+              <input
+                type="email" required value={form.email}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm mt-1 focus:ring-2 focus:ring-gold/30 focus:border-gold/40 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Phone</label>
+              <input
+                type="tel" value={form.phone}
+                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm mt-1 focus:ring-2 focus:ring-gold/30 focus:border-gold/40 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Company / Project</label>
+              <input
+                type="text" value={form.company}
+                onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm mt-1 focus:ring-2 focus:ring-gold/30 focus:border-gold/40 outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Message</label>
+              <textarea
+                rows={3} value={form.message}
+                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm mt-1 focus:ring-2 focus:ring-gold/30 focus:border-gold/40 outline-none resize-none"
+              />
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              type="submit" disabled={submitting || !form.name.trim() || !form.email.trim()}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-navy text-gold rounded-xl font-semibold border border-gold/20 hover:bg-navy/90 transition-colors disabled:opacity-50"
+            >
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {submitting ? 'Submitting…' : 'Submit Request'}
+            </button>
+          </form>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
 
 export function HomePage() {
   const [cities, setCities] = useState<City[]>([]);
   const [recentMagazines, setRecentMagazines] = useState<Magazine[]>([]);
-  const [stats, setStats] = useState<LiveStats>({ cities: null, members: null, magazineReaders: null, inquiries: null });
   const [corridorCounts, setCorridorCounts] = useState<CorridorCounts>({ maharashtra: 0, gujarat: 0, ncr: 0, karnataka: 0 });
   const [daughters, setDaughters] = useState<DaughterPicture[]>([]);
   const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Hero form state
+  const [leadForm, setLeadForm] = useState<{ open: boolean; type: 'list_business' | 'project_marketing' }>({ open: false, type: 'list_business' });
 
   useEffect(() => {
     async function safe<T>(p: Promise<{ data: T | null; error: unknown; count?: number | null }>): Promise<{ data: T | null; count: number | null }> {
@@ -108,18 +193,12 @@ export function HomePage() {
         const [
           citiesRes,
           magazinesRes,
-          cityCountRes,
-          memberCountRes,
-          siteConfigRes,
           corridorCitiesRes,
           listingCityRes,
           daughterRes,
         ] = await Promise.all([
           safe<City[]>(supabase.from('cities').select('*').order('name')),
           safe<Magazine[]>(supabase.from('magazines').select('*').eq('is_published', true).order('issue_number', { ascending: false }).limit(3)),
-          safe<unknown>(supabase.from('cities').select('*', { count: 'exact', head: true })),
-          safe<unknown>(supabase.from('profiles').select('*', { count: 'exact', head: true })),
-          safe<{ key: string; value: string }[]>(supabase.from('site_config').select('key, value').in('key', ['magazine_readers'])),
           safe<{ id: string; state: string }[]>(supabase.from('cities').select('id, state')),
           safe<{ city_id: string }[]>(supabase.from('listings').select('city_id').eq('is_active', true)),
           safe<DaughterPicture[]>(supabase.from('daughter_pictures').select('id,daughter_name,profile_picture_url,display_order,is_active').eq('is_active', true).order('display_order')),
@@ -129,25 +208,6 @@ export function HomePage() {
         if (magazinesRes.data) setRecentMagazines(magazinesRes.data);
         if (daughterRes.data) setDaughters(daughterRes.data);
 
-        const magazineReaders = (siteConfigRes.data ?? []).find((c) => c.key === 'magazine_readers')?.value ?? null;
-
-        // Try whatsapp_leads table for inquiry count
-        let inquiryCount: number | null = null;
-        try {
-          const { count, error } = await supabase.from('whatsapp_leads').select('*', { count: 'exact', head: true });
-          if (!error) inquiryCount = count;
-        } catch {
-          inquiryCount = null;
-        }
-
-        setStats({
-          cities: cityCountRes.count ?? 0,
-          members: memberCountRes.count ?? 0,
-          magazineReaders: magazineReaders ? Number(magazineReaders).toLocaleString('en-IN') + '+' : null,
-          inquiries: inquiryCount,
-        });
-
-        // Compute corridor counts from all active listings
         if (corridorCitiesRes.data && listingCityRes.data) {
           const cityStateMap: Record<string, string> = {};
           for (const c of corridorCitiesRes.data) {
@@ -179,38 +239,36 @@ export function HomePage() {
     { name: 'Bengaluru Tech Triangle', states: 'Karnataka', desc: "India's Silicon Valley — premium residential and IT park developments", count: corridorCounts.karnataka },
   ];
 
-  const fmtStat = (val: number | null, suffix = '') => {
-    if (val === null) return '...';
-    if (val === 0) return 'Launching';
-    if (val >= 1000) return `${(val / 1000).toFixed(1)}K+`;
-    return `${val}${suffix}`;
-  };
-
-  const liveStats = [
-    { label: 'Cities Covered',     value: stats.cities !== null ? (stats.cities === 0 ? 'Launching' : `${stats.cities}+`) : '...', icon: MapPin },
-    { label: 'Registered Members', value: fmtStat(stats.members),                                                                    icon: Users },
-    { label: 'Magazine Readers',   value: stats.magazineReaders ?? 'Coming Soon',                                                     icon: BookOpen },
-    { label: 'Inquiries Processed',value: stats.inquiries !== null ? (stats.inquiries === 0 ? 'Coming Soon' : fmtStat(stats.inquiries)) : 'Coming Soon', icon: MessageCircle },
+  const heroTiles = [
+    { title: 'Press & Media', icon: Newspaper, link: '/magazine', comingSoon: false },
+    { title: 'Our Videos', icon: Video, link: '/magazine', comingSoon: false },
+    { title: 'Home Loans', icon: Landmark, link: '/home-loans', comingSoon: false },
+    { title: 'Real Estate Courses', icon: GraduationCap, link: '#', comingSoon: true },
   ];
 
   return (
     <div className="bg-cream">
 
-      {/* ═══ SCROLL 1: HERO ═══ */}
+      {/* ═══ HERO ═══ */}
       <section className="relative min-h-screen flex flex-col items-center justify-center geo-pattern overflow-hidden bg-cream">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[600px] h-[600px] rounded-full bg-gold/5 blur-3xl" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-5xl mx-auto">
-          {/* Logo — 50vh desktop, 40vh mobile */}
+        <div className="relative z-10 flex flex-col items-center text-center px-4 w-full max-w-5xl mx-auto py-16">
+
+          {/* 1. Small text line above logo */}
+          <p className="text-warm-gray text-sm md:text-base font-display font-medium uppercase tracking-widest mb-6">
+            India's first curated, AI-powered Real Estate Portal
+          </p>
+
+          {/* 2. Logo — no container box */}
           <div className="relative mb-8 flex items-center justify-center">
-            <div className="absolute inset-[-2px] rounded-3xl gold-glow opacity-50" />
             <img
               src="/logo.png.png"
               alt="Property Herald"
-              className="relative h-[40vh] md:h-[50vh] w-auto object-contain drop-shadow-2xl"
-              style={{ maxWidth: '80vw' }}
+              className="relative h-[35vh] md:h-[42vh] w-auto object-contain drop-shadow-2xl"
+              style={{ maxWidth: '70vw' }}
               onError={(e) => {
                 const t = e.target as HTMLImageElement;
                 t.style.display = 'none';
@@ -218,7 +276,7 @@ export function HomePage() {
                 if (fb) fb.style.display = 'flex';
               }}
             />
-            <div className="hidden h-[40vh] md:h-[50vh] w-auto aspect-square items-center justify-center bg-navy rounded-3xl border-4 border-gold/40 p-12 gold-glow">
+            <div className="hidden h-[35vh] md:h-[42vh] w-auto aspect-square items-center justify-center">
               <div className="text-center">
                 <div className="text-7xl md:text-9xl font-serif font-black text-gold leading-none">PH</div>
                 <div className="mt-2 font-display font-bold tracking-widest text-cream/80 text-lg uppercase">Property Herald</div>
@@ -226,31 +284,89 @@ export function HomePage() {
             </div>
           </div>
 
-          {/* Badge */}
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-navy/8 border border-gold/30 text-warm-gray text-sm font-medium mb-5">
-            <TrendingUp className="w-4 h-4 mr-2 text-gold" />
-            India's Premier Real Estate Intelligence Platform
+          {/* 3. Two blocks flanking the logo — stacked on mobile, side by side on desktop */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl mb-8">
+            <Link
+              to="/directory"
+              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-6 flex items-center justify-center text-center"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
+              <div className="relative flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <MapPin className="w-6 h-6 text-gold" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg md:text-xl font-serif font-bold text-cream">Search India Property</h3>
+                  <p className="text-cream/50 text-xs mt-0.5">Browse listings across India</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
+              </div>
+            </Link>
+            <Link
+              to="/dubai"
+              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-6 flex items-center justify-center text-center"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
+              <div className="relative flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <Globe className="w-6 h-6 text-gold" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-lg md:text-xl font-serif font-bold text-cream">Search Dubai Property</h3>
+                  <p className="text-cream/50 text-xs mt-0.5">Explore all 7 Emirates</p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
+              </div>
+            </Link>
           </div>
 
-          {/* H1 */}
-          <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold text-navy leading-tight mb-4 text-balance">
-            Discover. Connect.<br />
-            <span className="text-gold">Grow.</span>
+          {/* 4. Tagline — single line */}
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-serif font-bold text-navy leading-tight mb-8 text-balance">
+            Discover. Connect. <span className="text-gold">Grow.</span>
           </h1>
 
-          {/* Subheadline */}
-          <p className="text-warm-gray text-lg md:text-xl max-w-2xl leading-relaxed mb-10 font-sans">
-            India's first curated, AI-powered real estate directory — connecting buyers with trusted builders, agents, and agencies across the nation.
+          {/* 5. Four clickable tiles — one row on desktop, 2x2 on mobile */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-4xl mb-8">
+            {heroTiles.map(({ title, icon: Icon, link, comingSoon }) => (
+              <Link
+                key={title}
+                to={link}
+                className="group relative bg-white rounded-2xl border border-gold/20 hover:border-gold/50 hover:shadow-xl transition-all p-6 flex flex-col items-center text-center"
+              >
+                {comingSoon && (
+                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-gold text-navy text-[10px] font-bold rounded-full font-display uppercase tracking-wider">
+                    Coming Soon
+                  </span>
+                )}
+                <div className="w-12 h-12 rounded-xl bg-navy/8 border border-gold/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <Icon className="w-6 h-6 text-gold" />
+                </div>
+                <h3 className="font-serif font-bold text-navy text-sm md:text-base leading-tight">{title}</h3>
+              </Link>
+            ))}
+          </div>
+
+          {/* 6. Text line */}
+          <p className="text-navy text-lg md:text-xl font-serif font-semibold tracking-wide mb-8">
+            India. Intelligence. Integrity.
           </p>
 
-          {/* CTAs */}
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
-            <Link to="/directory" className="btn-primary">
-              <Building2 className="w-5 h-5 mr-2" />Explore Listings
+          {/* 7. Two pill buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/register"
+              className="px-8 py-3.5 rounded-full bg-navy text-gold font-display font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:bg-navy/90 transition-all border border-gold/20"
+              style={{ letterSpacing: '0.06em' }}
+            >
+              List your business
             </Link>
-            <Link to="/register" className="btn-gold">
-              <Sparkles className="w-5 h-5 mr-2" />List Your Business
-            </Link>
+            <button
+              onClick={() => setLeadForm({ open: true, type: 'project_marketing' })}
+              className="px-8 py-3.5 rounded-full bg-gold text-navy font-display font-bold uppercase tracking-wider shadow-lg hover:shadow-xl hover:bg-gold/90 transition-all border border-navy/10"
+              style={{ letterSpacing: '0.06em' }}
+            >
+              Comprehensive Project Marketing
+            </button>
           </div>
 
         </div>
@@ -264,92 +380,6 @@ export function HomePage() {
           <span className="text-xs font-display font-semibold uppercase tracking-widest mb-2">Explore</span>
           <ChevronDown className="w-6 h-6" />
         </button>
-      </section>
-
-      {/* ═══ TAGLINE ═══ */}
-      <section className="bg-navy py-8 text-center">
-        <h2 className="text-2xl md:text-4xl font-serif font-bold text-gold tracking-wide">
-          India. Intelligence. Integrity.
-        </h2>
-      </section>
-
-      {/* ═══ INDIA / DUBAI MARKET BLOCKS (Section 19.1) ═══ */}
-      <section className="bg-cream py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Link
-              to="/directory"
-              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-10 min-h-[200px] flex flex-col justify-center"
-            >
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
-              <div className="relative flex items-center gap-5">
-                <div className="w-16 h-16 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <MapPin className="w-8 h-8 text-gold" />
-                </div>
-                <div>
-                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-cream mb-1">India Property</h3>
-                  <p className="text-cream/60 text-sm">Browse listings across India's premier real estate corridors</p>
-                </div>
-                <ArrowRight className="w-6 h-6 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
-              </div>
-            </Link>
-            <Link
-              to="/dubai"
-              className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-10 min-h-[200px] flex flex-col justify-center"
-            >
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
-              <div className="relative flex items-center gap-5">
-                <div className="w-16 h-16 rounded-xl bg-gold/10 border border-gold/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Globe className="w-8 h-8 text-gold" />
-                </div>
-                <div>
-                  <h3 className="text-2xl md:text-3xl font-serif font-bold text-cream mb-1">Dubai Property</h3>
-                  <p className="text-cream/60 text-sm">Explore premium listings across all 7 Emirates</p>
-                </div>
-                <ArrowRight className="w-6 h-6 text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all ml-auto" />
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ FEATURE TILES ═══ */}
-      <section className="bg-cream pb-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 gap-6">
-            {[
-              { title: 'Press & Media', icon: Newspaper, link: '/magazine', comingSoon: false },
-              { title: 'Our Videos', icon: Video, link: '/magazine', comingSoon: false },
-              { title: 'Home Loans', icon: Landmark, link: '/home-loans', comingSoon: false },
-              { title: 'Real Estate Foundation Course', icon: GraduationCap, link: '#', comingSoon: true },
-            ].map(({ title, icon: Icon, link, comingSoon }) => (
-              <Link key={title} to={link} className="group relative bg-white rounded-2xl border border-gold/20 hover:border-gold/50 hover:shadow-xl transition-all p-8 flex flex-col items-center text-center">
-                {comingSoon && (
-                  <span className="absolute top-3 right-3 px-2.5 py-1 bg-gold text-navy text-xs font-bold rounded-full font-display uppercase tracking-wider">Coming Soon</span>
-                )}
-                <div className="w-14 h-14 rounded-xl bg-navy/8 border border-gold/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Icon className="w-7 h-7 text-gold" />
-                </div>
-                <h3 className="font-serif font-bold text-navy text-base md:text-lg">{title}</h3>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ LIVE STATS ═══ */}
-      <section className="bg-cream py-12">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
-            {liveStats.map(({ label, value, icon: Icon }) => (
-              <div key={label} className="bg-navy rounded-xl p-4 border border-gold/20 text-center">
-                <Icon className="w-5 h-5 text-gold mx-auto mb-2" />
-                <div className="text-xl md:text-2xl font-bold text-gold font-display leading-tight">{value}</div>
-                <div className="text-xs text-cream/60 mt-1 font-sans">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* ═══ FOUNDING PARTNER PROGRAMME ═══ */}
@@ -370,9 +400,6 @@ export function HomePage() {
           </Link>
         </div>
       </section>
-
-      {/* ═══ MEET OUR TEAM ═══ */}
-      <MeetOurTeam />
 
       {/* ═══ MEET OUR AI TEAM ═══ */}
       <MeetOurAITeam daughters={daughters} loading={loading} />
@@ -687,6 +714,13 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Hero lead form modal */}
+      <HeroLeadForm
+        open={leadForm.open}
+        formType={leadForm.type}
+        onClose={() => setLeadForm(f => ({ ...f, open: false }))}
+      />
 
     </div>
   );
