@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, Download, LogOut, type LucideIcon } from 'lucide-react';
+import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, Download, LogOut, MapPin, type LucideIcon } from 'lucide-react';
 import { boardroomChatStream, boardroomSummarize, ChatMsg, Attachment } from '../lib/boardroomChat';
 import { neenaRoom } from '../lib/neenaRoom';
 import { initVoices, speak, stopSpeaking, startListening, ttsSupported, sttSupported } from '../lib/voice';
@@ -97,6 +97,40 @@ const PERSONAS: Record<Persona, PersonaCfg> = {
     dot: 'bg-slate-400',
     badge: 'bg-blue-900/40 text-blue-300 border border-blue-800/40',
     titleText: 'text-slate-400',
+  },
+  neetu: {
+    key: 'neetu',
+    name: 'Neetu',
+    roll: 'R-04',
+    title: 'Head of Home Loans · NGFC',
+    intro: 'Namaste Boss! Neetu here. The home loans desk is ready — what do you need?',
+    icon: Shield,
+    headerBg: 'bg-gradient-to-r from-emerald-950 to-gray-950 border-b border-emerald-900/40',
+    avatarBg: 'bg-emerald-900/80 border border-emerald-600/50',
+    avatarIcon: 'text-emerald-300',
+    aiBubble: 'bg-gray-800/80 border border-emerald-900/40 text-gray-100 rounded-bl-sm',
+    inputRing: 'focus:border-emerald-700 focus:ring-emerald-900/40',
+    sendBtn: 'bg-amber-500 active:bg-amber-400',
+    dot: 'bg-emerald-500',
+    badge: 'bg-emerald-900/40 text-emerald-300 border border-emerald-800/40',
+    titleText: 'text-emerald-400',
+  },
+  naksha: {
+    key: 'naksha',
+    name: 'Naksha',
+    roll: 'R-05',
+    title: 'Locality Intelligence · Maps & Data',
+    intro: 'Boss, Naksha here. Locality intelligence is live — what area are we looking at?',
+    icon: Brain,
+    headerBg: 'bg-gradient-to-r from-amber-950 to-gray-950 border-b border-amber-900/40',
+    avatarBg: 'bg-amber-900/80 border border-amber-600/50',
+    avatarIcon: 'text-amber-300',
+    aiBubble: 'bg-gray-800/80 border border-amber-900/40 text-gray-100 rounded-bl-sm',
+    inputRing: 'focus:border-amber-700 focus:ring-amber-900/40',
+    sendBtn: 'bg-amber-500 active:bg-amber-400',
+    dot: 'bg-amber-500',
+    badge: 'bg-amber-900/40 text-amber-300 border border-amber-800/40',
+    titleText: 'text-amber-400',
   },
 };
 
@@ -737,6 +771,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
             <Send className="w-5 h-5" />
           </button>
         </div>
+        <p className="text-[10px] text-gray-600 text-center mt-1.5 px-4">AI guidance only — not a binding quote or offer. Powered by Claude.</p>
       </div>
     </div>
   );

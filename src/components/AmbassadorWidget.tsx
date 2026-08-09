@@ -10,7 +10,7 @@ const QUICK_REPLIES = [
   { label: 'List My Business', response: 'Excellent! Property Herald is the premier platform for developers, agencies, and agents across India. Register as a developer or agent, list your properties, and connect directly with buyers via WhatsApp. Shall I walk you through the registration process?' },
   { label: 'Token Economy', response: 'Property Herald uses a token-based system that gives you full control over your marketing spend. Tokens power WhatsApp leads, featured listings, magazine ads, and more. 1 token = ₹20, with 5 bundles from Starter (100 tokens) to Enterprise (3,250 tokens). Would you like to see our bundle options?' },
   { label: 'Magazine Advertising', response: 'Our weekly digital magazine reaches 1,00,000+ property buyers. Advertising options include Half Page (60 tokens), Full Page (100 tokens), and Cover Page (250 tokens). The magazine is distributed via curated WhatsApp groups for maximum reach. Shall I tell you more?' },
-  { label: 'SBI Home Loans', response: 'Every Property Herald listing comes with an integrated SBI Home Loan calculator. You can check your EMI instantly, compare rates across SBI, HDFC, and ICICI, and apply for pre-approval — all from within any listing page. Current SBI rates start from 8.5% p.a. Interested?' },
+  { label: 'Home Loans', response: 'Our Naya Ghar Finance Centre can help you pre-qualify for a home loan in 5 minutes. Neetu, our Home Loans Specialist, will guide you through indicative market rates across lender categories and help you understand your options. Visit /home-loans to get started — would you like me to tell you more?' },
   { label: 'Speak to Expert', response: 'Of course! I will connect you with Nirmal Serai, Property Herald\'s founder. Please register on the platform and our team will reach out to you directly.' },
 ];
 
@@ -792,7 +792,7 @@ export function AmbassadorWidget() {
                     <Send className="w-3.5 h-3.5 text-gold" />
                   </button>
                 </form>
-                <p className="text-[10px] text-gray-400 text-center mt-1.5">Powered by Claude AI</p>
+                <p className="text-[10px] text-gray-400 text-center mt-1.5">AI guidance only — not a binding quote or offer. Powered by Claude.</p>
               </div>
             </>
           )}

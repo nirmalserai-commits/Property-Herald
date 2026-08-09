@@ -1,58 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
-import { Check, ChevronRight, MessageCircle, Shield, Star, Phone } from 'lucide-react';
+import { NeetuChatWidget } from '../components/NeetuChatWidget';
+import { Check, ChevronRight, MessageCircle, Shield, Star, Phone, TrendingUp, Info } from 'lucide-react';
 
-const PARTNER_BANKS = [
-  {
-    name: 'SBI Home Loans',
-    rate: '8.50%',
-    logo: 'SBI',
-    color: 'bg-blue-600',
-    tagline: 'Lowest rates for salaried professionals',
-  },
-  {
-    name: 'HDFC Ltd',
-    rate: '8.70%',
-    logo: 'HDFC',
-    color: 'bg-red-600',
-    tagline: 'Flexible repayment options',
-  },
-  {
-    name: 'ICICI Bank',
-    rate: '8.75%',
-    logo: 'ICICI',
-    color: 'bg-orange-500',
-    tagline: 'Fast approval in 48 hours',
-  },
-  {
-    name: 'Axis Bank',
-    rate: '8.80%',
-    logo: 'AXIS',
-    color: 'bg-purple-700',
-    tagline: 'Competitive rates with quick processing',
-  },
-  {
-    name: 'Bank of Baroda',
-    rate: '8.60%',
-    logo: 'BOB',
-    color: 'bg-amber-600',
-    tagline: 'Trusted public sector bank with attractive home loan rates',
-  },
-  {
-    name: 'LIC Housing Finance',
-    rate: '8.65%',
-    logo: 'LIC',
-    color: 'bg-green-700',
-    tagline: 'Trusted by 30 lakh families',
-  },
+const INDICATIVE_RATES = [
+  { category: 'Public Sector Banks', range: '8.40% – 9.10% p.a.', note: 'Generally the lowest rates, especially for salaried applicants' },
+  { category: 'Private Banks', range: '8.65% – 9.50% p.a.', note: 'Faster processing, digital-first experience' },
+  { category: 'Housing Finance Cos.', range: '8.50% – 9.40% p.a.', note: 'Specialised in home lending, flexible eligibility' },
+  { category: 'NBFCs', range: '9.00% – 10.50% p.a.', note: 'May accept non-standard income profiles' },
 ];
 
 const LOAN_STEPS = [
   { step: 1, title: 'Share Your Details', desc: 'Fill a short form — takes under 2 minutes' },
   { step: 2, title: 'Neetu Reviews', desc: 'Our AI assistant pre-qualifies your profile instantly' },
-  { step: 3, title: 'Bank Match', desc: 'We match you with the best bank for your profile' },
-  { step: 4, title: 'Get Pre-Approval', desc: 'Receive your home loan pre-approval letter' },
+  { step: 3, title: 'Find the Right Lender', desc: 'We help you identify suitable lenders for your profile' },
+  { step: 4, title: 'Get Pre-Approval', desc: 'Move forward with your home loan application' },
 ];
 
 interface LeadForm {
@@ -95,7 +58,7 @@ export function HomeLoansPage() {
             <p className="text-gold text-sm font-semibold tracking-widest uppercase mb-3">Naya Ghar Finance Centre</p>
             <h1 className="text-4xl md:text-5xl font-bold mb-3">Naya Ghar, Naya Sapna,<br />Naya Raasta</h1>
             <p className="text-cream/60 text-lg max-w-2xl mx-auto">
-              Get pre-qualified for a home loan in 5 minutes. Our AI team connects you with India's leading banks — SBI, HDFC, ICICI, Axis, Bank of Baroda and LIC Housing Finance.
+              Get pre-qualified for a home loan in 5 minutes. Our AI assistant Neetu guides you through the process and helps you understand your options.
             </p>
           </div>
         </div>
@@ -177,7 +140,7 @@ export function HomeLoansPage() {
                     ) : (
                       <>
                         <h3 className="text-xl font-bold mb-1" style={{ color: '#0a1628' }}>Get Pre-Qualified in 5 Minutes</h3>
-                        <p className="text-gray-500 text-sm mb-6">Fill in your details and Neetu will find the best loan for you.</p>
+                        <p className="text-gray-500 text-sm mb-6">Fill in your details and Neetu will help you understand your home loan options.</p>
                         <form onSubmit={handleSubmit} className="space-y-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -301,20 +264,23 @@ export function HomeLoansPage() {
           </div>
         </div>
 
-        {/* Partner Banks */}
+        {/* Indicative Market Rates */}
         <div className="max-w-5xl mx-auto px-4 py-12">
-          <h2 className="text-2xl font-bold text-center mb-2" style={{ color: '#0a1628' }}>Partner Banks</h2>
-          <p className="text-center text-gray-500 text-sm mb-8">We work with India's most trusted home loan providers</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {PARTNER_BANKS.map(bank => (
-              <div key={bank.name} className="bg-white rounded-2xl border border-gray-200 p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-                <div className={`w-12 h-12 ${bank.color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
-                  <span className="text-white font-bold text-xs">{bank.logo}</span>
-                </div>
-                <p className="font-bold text-sm mb-1" style={{ color: '#0a1628' }}>{bank.name}</p>
-                <p className="text-xl font-bold" style={{ color: '#c9a84c' }}>{bank.rate}</p>
-                <p className="text-xs text-gray-400 mt-0.5">p.a. onwards</p>
-                <p className="text-xs text-gray-500 mt-2">{bank.tagline}</p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5 text-gold" />
+            <h2 className="text-2xl font-bold text-center" style={{ color: '#0a1628' }}>Indicative Market Rates</h2>
+          </div>
+          <p className="text-center text-gray-500 text-sm mb-2">A general guide to prevailing home loan rate ranges across lender categories in India</p>
+          <div className="flex items-center justify-center gap-1.5 mb-8">
+            <Info className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-xs text-gray-400">Actual rates vary by lender, profile, and market conditions. Not a quote or offer.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {INDICATIVE_RATES.map(tier => (
+              <div key={tier.category} className="bg-white rounded-2xl border border-gray-200 p-5 text-center shadow-sm hover:shadow-md transition-shadow">
+                <p className="font-bold text-sm mb-2" style={{ color: '#0a1628' }}>{tier.category}</p>
+                <p className="text-xl font-bold" style={{ color: '#c9a84c' }}>{tier.range}</p>
+                <p className="text-xs text-gray-500 mt-2">{tier.note}</p>
               </div>
             ))}
           </div>
@@ -344,7 +310,7 @@ export function HomeLoansPage() {
           <div className="grid sm:grid-cols-3 gap-6">
             {[
               { icon: '⚡', title: 'Instant Pre-Qualification', desc: 'Know your eligibility in 5 minutes, not days' },
-              { icon: '🏦', title: '6 Partner Banks', desc: 'Compare rates across SBI, HDFC, ICICI, Axis, Bank of Baroda, and LIC HFL' },
+              { icon: '📊', title: 'Compare Your Options', desc: 'Understand indicative rates across lender categories' },
               { icon: '🔒', title: 'Zero Cost to You', desc: 'Our service is completely free for home buyers' },
             ].map(item => (
               <div key={item.title} className="bg-white rounded-2xl border border-gray-200 p-6 text-center">
@@ -367,6 +333,7 @@ export function HomeLoansPage() {
           </div>
         </div>
       </div>
+      <NeetuChatWidget />
     </Layout>
   );
 }

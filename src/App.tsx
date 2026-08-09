@@ -57,6 +57,7 @@ import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminLocations } from './pages/admin/AdminLocations';
 import { AdminRegistrations } from './pages/admin/AdminRegistrations';
 import { AdminDaughterPictures } from './pages/admin/AdminDaughterPictures';
+import { AdminGoodwillTokens } from './pages/admin/AdminGoodwillTokens';
 import { AdminVideos } from './pages/admin/AdminVideos';
 import { VideosPage } from './pages/VideosPage';
 import { AdminCrm } from './pages/admin/AdminCrm';
@@ -147,6 +148,8 @@ function AppRoutes() {
       <Route path="/boardroom" element={<BoardroomPage persona="neena" />} />
       <Route path="/boardroom/nora" element={<BoardroomPage persona="nora" />} />
       <Route path="/boardroom/nita" element={<BoardroomPage persona="nita" />} />
+      <Route path="/boardroom/neetu" element={<BoardroomPage persona="neetu" />} />
+      <Route path="/boardroom/naksha" element={<BoardroomPage persona="naksha" />} />
       {/* Admin routes */}
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/users" element={<AdminUsers />} />
@@ -174,6 +177,7 @@ function AppRoutes() {
       <Route path="/admin/crm" element={<AdminCrm />} />
       <Route path="/admin/deals" element={<AdminDeals />} />
       <Route path="/admin/packages" element={<AdminPackages />} />
+      <Route path="/admin/goodwill-tokens" element={<AdminGoodwillTokens />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

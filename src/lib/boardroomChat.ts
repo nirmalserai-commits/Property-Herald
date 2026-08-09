@@ -18,7 +18,7 @@ export interface ChatMessage {
 
 export type ChatMsg = ChatMessage;
 
-export type Daughter = 'neena' | 'nora' | 'nita';
+export type Daughter = 'neena' | 'nora' | 'nita' | 'neetu' | 'naksha';
 
 const EDGE_FUNCTION_URL =
   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/boardroom-chat`;

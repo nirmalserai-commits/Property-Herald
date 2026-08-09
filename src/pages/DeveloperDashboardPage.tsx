@@ -593,6 +593,11 @@ function SalesOfferGenerator({ listings, walletBalance, onRefresh, tokenCosts }:
       return;
     }
 
+    const confirmed = window.confirm(
+      `This will cost ${cost} token${cost > 1 ? 's' : ''} from your wallet.\n\nClick OK to proceed and generate your ${edition} sales offer.`
+    );
+    if (!confirmed) return;
+
     setGenerating(true);
     const { error: burnErr } = await supabase.rpc('burn_tokens', { p_user_id: user.id, p_amount: cost, p_reason: `Sales Offer ${edition}` });
     if (burnErr) {
