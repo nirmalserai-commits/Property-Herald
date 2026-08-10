@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, Download, LogOut, MapPin, type LucideIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Crown, Shield, Brain, Lock, Send, Plus, Paperclip, X, FileText, Image as ImageIcon, ArrowDown, Mic, Car, Volume2, Square, Download, LogOut, MapPin, Users, type LucideIcon } from 'lucide-react';
 import { boardroomChatStream, boardroomSummarize, ChatMsg, Attachment } from '../lib/boardroomChat';
-import { neenaRoom } from '../lib/neenaRoom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 import { initVoices, speak, stopSpeaking, startListening, ttsSupported, sttSupported } from '../lib/voice';
-import type { Session } from '@supabase/supabase-js';
 import type { Persona } from '../types/database';
 
 export type { Persona };
@@ -103,7 +104,7 @@ const PERSONAS: Record<Persona, PersonaCfg> = {
     name: 'Neetu',
     roll: 'R-04',
     title: 'Head of Home Loans · NGFC',
-    intro: 'Namaste Boss! Neetu here. The home loans desk is ready — what do you need?',
+    intro: 'Namaste Mr. Nirmal! Neetu here. The home loans desk is ready — what do you need?',
     icon: Shield,
     headerBg: 'bg-gradient-to-r from-emerald-950 to-gray-950 border-b border-emerald-900/40',
     avatarBg: 'bg-emerald-900/80 border border-emerald-600/50',
@@ -151,13 +152,7 @@ function fmtTime(iso: string): string {
 export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   const cfg = PERSONAS[persona];
   const Icon = cfg.icon;
-
-  const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [emailInput, setEmailInput] = useState('nirmalseraione@gmail.com');
-  const [pwInput, setPwInput] = useState('');
-  const [signInError, setSignInError] = useState('');
-  const [signingIn, setSigningIn] = useState(false);
+  const { session, loading: authLoading } = useAuth();
 
   const [sessionId, setSessionId] = useState('');
   const [messages, setMessages] = useState<DbMsg[]>([]);
@@ -191,20 +186,6 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   }, []);
 
   useEffect(() => {
-    const { data: { subscription } } = neenaRoom.auth.onAuthStateChange((_event, sess) => {
-      (async () => {
-        setSession(sess);
-        setAuthLoading(false);
-      })();
-    });
-    neenaRoom.auth.getSession().then(({ data: { session: sess } }) => {
-      setSession(sess);
-      setAuthLoading(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
     if (authed && ttsSupported()) initVoices();
     return () => stopSpeaking();
   }, [session, persona]);
@@ -234,7 +215,11 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       loaded.current = true;
       loadBoardroom();
     }
-  }, [authed]);
+  }, [authed, persona]);
+
+  useEffect(() => {
+    if (authed) loaded.current = false;
+  }, [persona]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -251,24 +236,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     return () => el.removeEventListener('scroll', onScroll);
   }, [authed]);
 
-  async function handleSignIn() {
-    setSigningIn(true);
-    setSignInError('');
-    const { error } = await neenaRoom.auth.signInWithPassword({
-      email: emailInput.trim(),
-      password: pwInput,
-    });
-    if (error) {
-      setSignInError(error.message);
-      setSigningIn(false);
-    } else {
-      setPwInput('');
-      setSigningIn(false);
-    }
-  }
-
   async function handleSignOut() {
-    await neenaRoom.auth.signOut();
     setMessages([]);
     setSessionId('');
     setSummary('');
@@ -278,7 +246,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   async function loadBoardroom() {
     setLoadingDb(true);
     try {
-      const { data: latest } = await neenaRoom
+      const { data: latest } = await supabase
         .from('boardroom_chats')
         .select('session_id')
         .eq('daughter_name', persona)
@@ -289,7 +257,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       if (!latest) {
         const sid = crypto.randomUUID();
         setSessionId(sid);
-        const { data: intro } = await neenaRoom
+        const { data: intro } = await supabase
           .from('boardroom_chats')
           .insert({ daughter_name: persona, role: 'assistant', content: cfg.intro, session_id: sid })
           .select()
@@ -301,7 +269,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       const sid = latest.session_id as string;
       setSessionId(sid);
 
-      const { data: msgs } = await neenaRoom
+      const { data: msgs } = await supabase
         .from('boardroom_chats')
         .select('*')
         .eq('daughter_name', persona)
@@ -309,7 +277,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
         .order('created_at', { ascending: true });
       setMessages((msgs ?? []) as DbMsg[]);
 
-      const { data: sumRow } = await neenaRoom
+      const { data: sumRow } = await supabase
         .from('boardroom_chats')
         .select('session_summary')
         .eq('daughter_name', persona)
@@ -326,7 +294,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   async function startNewSession() {
     const sid = crypto.randomUUID();
     setSessionId(sid);
-    const { data: intro } = await neenaRoom
+    const { data: intro } = await supabase
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'assistant', content: cfg.intro, session_id: sid })
       .select()
@@ -342,7 +310,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       const chatHistory: ChatMsg[] = allMsgs.map(m => ({ role: m.role === 'assistant' ? 'ai' : 'user', content: m.content }));
       const sum = await boardroomSummarize(chatHistory, persona, neenaRoom);
       if (!sum) return;
-      await neenaRoom.from('boardroom_chats').update({ session_summary: sum }).eq('id', latestId);
+      await supabase.from('boardroom_chats').update({ session_summary: sum }).eq('id', latestId);
       setSummary(sum);
     } catch { /* best-effort */ }
   }
@@ -356,11 +324,11 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
         if (file.size > 10 * 1024 * 1024) { alert(`"${file.name}" is too large. Maximum 10 MB.`); continue; }
         const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
         const path = `${persona}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await neenaRoom.storage
+        const { error: upErr } = await supabase.storage
           .from('boardroom-attachments')
           .upload(path, file, { contentType: file.type || 'application/octet-stream' });
         if (upErr) { alert(`Upload failed for "${file.name}": ${upErr.message}`); continue; }
-        const { data: signed } = await neenaRoom.storage.from('boardroom-attachments').createSignedUrl(path, 3600);
+        const { data: signed } = await supabase.storage.from('boardroom-attachments').createSignedUrl(path, 3600);
         const att: BoardroomAttachment = {
           url: signed?.signedUrl || '',
           path,
@@ -392,7 +360,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     setIsTyping(true);
     setStreamText('');
 
-    const { data: userMsg } = await neenaRoom
+    const { data: userMsg } = await supabase
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'user', content: text || '(attachment shared)', session_id: sessionId, attachments: atts.length > 0 ? atts : null })
       .select()
@@ -404,7 +372,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
 
     let fullText = '';
     try {
-      fullText = await boardroomChatStream(history, persona, summary || null, chunk => setStreamText(s => s + chunk), neenaRoom);
+      fullText = await boardroomChatStream(history, persona, summary || null, chunk => setStreamText(s => s + chunk), supabase);
     } catch {
       fullText = 'Channel unavailable. Please try again in a moment.';
     }
@@ -412,7 +380,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     setStreamText('');
     setIsTyping(false);
 
-    const { data: asstMsg } = await neenaRoom
+    const { data: asstMsg } = await supabase
       .from('boardroom_chats')
       .insert({ daughter_name: persona, role: 'assistant', content: fullText, session_id: sessionId })
       .select()
@@ -421,7 +389,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       setMessages(m => [...m, asstMsg as DbMsg]);
       const total = messages.length + 2;
       if (total > 0 && total % 20 === 0) {
-        const snap = [...messages, ...(userMsg ? [userMsg as DbMsg] : []), asstMsg as DbMsg];
+          const snap = [...messages, ...(userMsg ? [userMsg as DbMsg] : []), asstMsg as DbMsg];
         maybeSummarize(snap, (asstMsg as DbMsg).id);
       }
     }
@@ -514,60 +482,22 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
     );
   }
 
-  // ── SIGN-IN GATE ────────────────────────────────────────────────────────────
+  // ── NOT AUTHENTICATED — redirect to login ────────────────────────────────────
   if (!authed) {
     return (
-      <div
-        className="flex items-center justify-center min-h-[100dvh] bg-gray-950 px-6"
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <div className={`w-16 h-16 ${cfg.avatarBg} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg`}>
-              <Icon className={`w-7 h-7 ${cfg.avatarIcon}`} />
-            </div>
-            <h1 className="text-white font-bold text-xl mb-1 font-serif tracking-tight">Boardroom</h1>
-            <p className="text-gray-500 text-sm">{cfg.name} · {cfg.title}</p>
-            <p className="text-gray-700 text-xs mt-1">Property Herald · Royal Council {cfg.roll}</p>
+      <div className="flex items-center justify-center min-h-[100dvh] bg-gray-950 px-6">
+        <div className="text-center">
+          <div className={`w-16 h-16 ${cfg.avatarBg} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg`}>
+            <Icon className={`w-7 h-7 ${cfg.avatarIcon}`} />
           </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl">
-            <div className="mb-4">
-              <label className="text-xs text-gray-500 font-medium mb-1.5 block">Email</label>
-              <input
-                type="email"
-                value={emailInput}
-                onChange={e => setEmailInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSignIn()}
-                placeholder="your@email.com"
-                className="w-full px-4 py-3.5 bg-gray-800 border border-gray-700 text-white rounded-xl text-sm placeholder-gray-600 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
-              />
-            </div>
-            <div className="relative mb-4">
-              <label className="text-xs text-gray-500 font-medium mb-1.5 block">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <input
-                  type="password"
-                  value={pwInput}
-                  onChange={e => setPwInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSignIn()}
-                  placeholder="Private password"
-                  autoFocus
-                  className="w-full pl-10 pr-4 py-3.5 bg-gray-800 border border-gray-700 text-white rounded-xl text-base placeholder-gray-600 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
-                />
-              </div>
-            </div>
-            {signInError && <p className="text-red-400 text-xs mb-3">{signInError}</p>}
-            <button
-              onClick={handleSignIn}
-              disabled={signingIn || !pwInput}
-              className="w-full py-3.5 bg-red-800 hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all"
-            >
-              {signingIn ? 'Entering…' : 'Enter Boardroom'}
-            </button>
-          </div>
-          <p className="text-center text-gray-700 text-xs mt-6">Authorised personnel only</p>
+          <h1 className="text-white font-bold text-xl mb-2 font-serif">Boardroom Access Required</h1>
+          <p className="text-gray-500 text-sm mb-6">Please sign in to your Property Herald account to enter the Boardroom.</p>
+          <a
+            href="/login"
+            className="inline-block px-8 py-3 bg-red-800 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all"
+          >
+            Go to Sign In
+          </a>
         </div>
       </div>
     );
@@ -579,6 +509,36 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
       className="flex flex-col h-[100dvh] bg-gray-950 max-w-2xl mx-auto relative"
       style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
+      {/* Persona hub navigation */}
+      <div className="flex items-center gap-1 px-2 py-2 bg-gray-900 border-b border-gray-800 overflow-x-auto flex-shrink-0 scrollbar-hide">
+        {(Object.keys(PERSONAS) as Persona[]).map(key => {
+          const p = PERSONAS[key];
+          const PIcon = p.icon;
+          const active = key === persona;
+          return (
+            <Link
+              key={key}
+              to={`/boardroom${key === 'neena' ? '' : '/' + key}`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                active
+                  ? `${p.avatarBg} ${p.avatarIcon}`
+                  : 'bg-white/5 text-gray-500 hover:bg-white/10 hover:text-gray-300'
+              }`}
+            >
+              <PIcon className="w-3.5 h-3.5" />
+              {p.name}
+            </Link>
+          );
+        })}
+        <Link
+          to="/boardroom/conference"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all bg-amber-900/40 text-amber-300 hover:bg-amber-900/60 border border-amber-800/40"
+        >
+          <Users className="w-3.5 h-3.5" />
+          Conference
+        </Link>
+      </div>
+
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-3 ${cfg.headerBg} flex-shrink-0`}>
         <div className="flex items-center gap-3 min-w-0">

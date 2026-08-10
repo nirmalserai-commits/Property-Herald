@@ -14,7 +14,7 @@ const PLACEMENT_META: Record<string, { label: string; desc: string; page: string
   magazine_full_page: { label: 'Magazine Full Page',   desc: 'Reserved full page in every digital magazine issue', page: 'Magazine section' },
   homepage_card:      { label: 'Homepage Feature Card', desc: 'Dedicated card in the homepage ecosystem section', page: 'Homepage' },
   nri_panel:          { label: 'NRI Banking Panel',    desc: 'In the NRI portal section', page: 'NRI portal' },
-  print_cover:        { label: 'Print Edition Cover',  desc: 'SBI as title sponsor of quarterly print edition', page: 'Print edition' },
+  print_cover:        { label: 'Print Edition Cover',  desc: 'Advertiser as title sponsor of quarterly print edition', page: 'Print edition' },
 };
 
 export function AdminSbiAds() {
@@ -88,21 +88,21 @@ export function AdminSbiAds() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <Landmark className="w-6 h-6 text-navy" />
-              <h1 className="text-2xl font-serif font-bold text-navy">SBI Ad Placements</h1>
+              <h1 className="text-2xl font-serif font-bold text-navy">Institutional Ad Placements</h1>
             </div>
-            <p className="text-sm text-gray-500">Institutional SBI advertising — managed separately from the token economy. Activate placements and update creatives.</p>
+            <p className="text-sm text-gray-500">Manage advertising placements across the platform. Activate placements and update creatives for any institutional or banking advertiser.</p>
           </div>
           <button onClick={fetchPlacements} className="p-2 text-gray-500 hover:text-navy rounded-lg hover:bg-gray-100 transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
 
-        {/* SBI partnership notice */}
+        {/* Advertising info notice */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
           <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-blue-800">SBI Corporate Partnership</p>
-            <p className="text-xs text-blue-600 mt-1">These placements are governed by a direct corporate agreement with SBI — not the token economy. Revenue is tracked separately as part of the SBI partnership revenue stream (est. ₹1,00,000+/month at scale).</p>
+            <p className="text-sm font-semibold text-blue-800">Institutional Advertising</p>
+            <p className="text-xs text-blue-600 mt-1">These placements are managed separately from the token economy. Any institutional advertiser (bank, NBFC, corporate) can be featured here. Revenue is tracked separately from the developer token system.</p>
           </div>
         </div>
 

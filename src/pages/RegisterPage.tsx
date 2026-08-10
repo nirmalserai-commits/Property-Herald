@@ -32,7 +32,7 @@ export function RegisterPage() {
     contact_person: '', phone: '', whatsapp_number: '', city_id: '',
     description: '', website_url: '',
     property_types: [] as string[], deal_types: [] as string[],
-    selected_bundle: 'power',
+    selected_bundle: 'free',
     market_track: 'india' as 'india' | 'dubai',
   });
 
@@ -41,16 +41,19 @@ export function RegisterPage() {
       .then(({ data }) => { if (data) setCities(data as City[]); });
   }, []);
 
+  const filteredCities = cities.filter(c => !c.market_track || c.market_track === formData.market_track);
+
   useEffect(() => { if (user) navigate('/dashboard'); }, [user, navigate]);
 
   const set = (field: string, value: unknown) => { setFormData(prev => ({ ...prev, [field]: value })); setError(''); };
   const toggle = (field: 'property_types' | 'deal_types', value: string) => {
     setFormData(prev => ({ ...prev, [field]: prev[field].includes(value) ? prev[field].filter(v => v !== value) : [...prev[field], value] }));
+    setError('');
   };
 
   const validate = () => {
     if (step === 1 && !formData.business_type) { setError('Please select your business type'); return false; }
-    if (step === 2) {
+    if (step >= 2) {
       if (!formData.email || !formData.password) { setError('Email and password are required'); return false; }
       if (formData.password.length < 6) { setError('Password must be at least 6 characters'); return false; }
       if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return false; }
@@ -90,7 +93,7 @@ export function RegisterPage() {
       });
     }
 
-    navigate('/tokens');
+    navigate('/dashboard');
   };
 
   const businessTypes = [
@@ -175,14 +178,14 @@ export function RegisterPage() {
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Market Track *</label>
                   <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => set('market_track', 'india')}
+                    <button type="button" onClick={() => { set('market_track', 'india'); set('city_id', ''); }}
                       className={`p-4 rounded-xl border-2 transition-all text-left ${
                         formData.market_track === 'india' ? 'border-navy bg-navy/3' : 'border-gray-200 hover:border-gray-300'
                       }`}>
                       <p className="font-semibold text-navy text-sm">India Track</p>
                       <p className="text-xs text-warm-gray">INR wallet · City + Locality · Naksha Reports</p>
                     </button>
-                    <button type="button" onClick={() => set('market_track', 'dubai')}
+                    <button type="button" onClick={() => { set('market_track', 'dubai'); set('city_id', ''); }}
                       className={`p-4 rounded-xl border-2 transition-all text-left ${
                         formData.market_track === 'dubai' ? 'border-navy bg-navy/3' : 'border-gray-200 hover:border-gray-300'
                       }`}>
@@ -297,7 +300,7 @@ export function RegisterPage() {
                         <select value={formData.city_id} onChange={e => set('city_id', e.target.value)} required
                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none appearance-none bg-white">
                           <option value="">Select City</option>
-                          {cities.map(city => <option key={city.id} value={city.id}>{city.name}, {city.state}</option>)}
+                          {filteredCities.map(city => <option key={city.id} value={city.id}>{city.name}, {city.state}</option>)}
                         </select>
                       </div>
                     </div>
@@ -337,12 +340,43 @@ export function RegisterPage() {
               </div>
             )}
 
-            {/* Step 3: Token Bundle */}
+            {/* Step 3: Plan */}
             {step === 3 && (
               <div>
-                <h2 className="text-xl font-serif font-bold text-navy mb-1">Choose Your Starter Bundle</h2>
-                <p className="text-warm-gray text-sm mb-6">1 token = ₹20 · Tokens never expire · Pay via Razorpay after registration</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+                <h2 className="text-xl font-serif font-bold text-navy mb-1">Choose Your Plan</h2>
+                <p className="text-warm-gray text-sm mb-6">You can start free and buy tokens anytime from your dashboard — no payment required to create your account.</p>
+
+                {/* Start Free option */}
+                <button type="button" onClick={() => set('selected_bundle', 'free')}
+                  className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left mb-4 ${
+                    formData.selected_bundle === 'free'
+                      ? 'border-navy bg-navy/5 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    formData.selected_bundle === 'free' ? 'bg-navy' : 'bg-gray-100'
+                  }`}>
+                    <Home className={`w-6 h-6 ${formData.selected_bundle === 'free' ? 'text-gold' : 'text-gray-400'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-bold text-navy">Start Free</p>
+                    <p className="text-sm text-warm-gray">0 tokens · Explore the platform, add your profile, and buy tokens only when you need them</p>
+                  </div>
+                  {formData.selected_bundle === 'free' && (
+                    <div className="w-6 h-6 bg-navy rounded-full flex items-center justify-center flex-shrink-0">
+                      <Check className="w-4 h-4 text-gold" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-xs text-gray-400 font-medium">OR BUY TOKENS NOW (OPTIONAL)</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                   {TOKEN_BUNDLES.map(bundle => (
                     <button key={bundle.id} type="button" onClick={() => set('selected_bundle', bundle.id)}
                       className={`relative p-5 rounded-xl border-2 transition-all text-left ${
@@ -368,16 +402,25 @@ export function RegisterPage() {
                     </button>
                   ))}
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 mb-6">
-                  <strong>How it works:</strong> Complete registration now, then pay for your chosen bundle via Razorpay on the next screen. Tokens are credited instantly after payment.
-                </div>
+
+                {formData.selected_bundle !== 'free' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 mb-6">
+                    <strong>How it works:</strong> Complete registration now, then pay for your chosen bundle via Razorpay on the next screen. Tokens are credited instantly after payment.
+                  </div>
+                )}
+                {formData.selected_bundle === 'free' && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800 mb-6">
+                    <strong>No payment required.</strong> Your account will be created with 0 tokens. You can buy tokens anytime from your dashboard when you need them.
+                  </div>
+                )}
+
                 <div className="flex justify-between">
                   <button type="button" onClick={() => setStep(2)} className="px-6 py-3 text-warm-gray font-medium hover:text-navy transition-colors">← Back</button>
                   <button type="submit" disabled={loading}
                     className="px-8 py-3 bg-navy text-cream font-display font-bold rounded-xl hover:bg-navy/90 disabled:opacity-40 flex items-center gap-2 transition-colors">
                     {loading
                       ? <><div className="w-5 h-5 border-2 border-cream/30 border-t-cream rounded-full animate-spin" />Creating Account…</>
-                      : <><Zap className="w-5 h-5" />Complete & Buy Tokens</>}
+                      : <>{formData.selected_bundle === 'free' ? <><Check className="w-5 h-5" />Create Free Account</> : <><Zap className="w-5 h-5" />Complete & Buy Tokens</>}</>}
                   </button>
                 </div>
               </div>

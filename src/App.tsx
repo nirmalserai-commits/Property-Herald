@@ -42,6 +42,7 @@ import { PricingPage } from './pages/PricingPage';
 import { SubmitListingPage } from './pages/SubmitListingPage';
 import { HomeLoansPage } from './pages/HomeLoansPage';
 import { BoardroomPage } from './pages/BoardroomPage';
+import { BoardroomConferencePage } from './pages/BoardroomConferencePage';
 import { AmbassadorsPage } from './pages/AmbassadorsPage';
 import { AdminPublicAmbassadors } from './pages/admin/AdminPublicAmbassadors';
 import { GreetingsVouchersPage } from './pages/GreetingsVouchersPage';
@@ -150,6 +151,7 @@ function AppRoutes() {
       <Route path="/boardroom/nita" element={<BoardroomPage persona="nita" />} />
       <Route path="/boardroom/neetu" element={<BoardroomPage persona="neetu" />} />
       <Route path="/boardroom/naksha" element={<BoardroomPage persona="naksha" />} />
+      <Route path="/boardroom/conference" element={<BoardroomConferencePage />} />
       {/* Admin routes */}
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/admin/users" element={<AdminUsers />} />

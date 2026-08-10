@@ -62,7 +62,7 @@ export function NeetuChatWidget() {
     if (!open) {
       setOpen(true);
       if (messages.length === 0) {
-        setMessages([{ role: 'ai', content: 'Namaste! Main Neetu hoon, your Home Loans Specialist at Property Herald. I can help you understand your home loan options and pre-qualify you. What is your loan amount range?' }]);
+        setMessages([{ role: 'ai', content: 'Namaste Mr. Nirmal! Main Neetu hoon, your Home Loans Specialist at Property Herald. I can help you understand your home loan options and pre-qualify you. What is your loan amount range?' }]);
       }
     } else {
       setOpen(false);
@@ -96,7 +96,7 @@ export function NeetuChatWidget() {
           {/* Header */}
           <div className="flex items-center gap-3 p-4" style={{ backgroundColor: '#0a1628' }}>
             <div className="w-10 h-10 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: '#c9a84c' }}>
-              <img src="/nora-chat.png.png" alt="Neetu" className="w-full h-full object-cover object-top" />
+              <img src="/neetu-avatar.webp" alt="Neetu" className="w-full h-full object-cover object-top" />
             </div>
             <div className="flex-1">
               <h3 className="text-white font-bold text-sm">Neetu</h3>

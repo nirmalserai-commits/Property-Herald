@@ -31,6 +31,8 @@ export interface City {
   name: string;
   state: string;
   slug: string;
+  is_active?: boolean;
+  market_track?: MarketTrack;
   created_at: string;
 }
 

@@ -33,7 +33,7 @@ const NAV = [
   { to: '/admin/ambassadors', label: 'AI Ambassadors', icon: Bot, exact: false },
   { to: '/admin/public-ambassadors', label: 'PH Ambassadors', icon: Award, exact: false },
   { to: '/admin/banners', label: 'Banners', icon: Image, exact: false },
-  { to: '/admin/sbi-ads', label: 'SBI Ads', icon: Landmark, exact: false },
+  { to: '/admin/sbi-ads', label: 'Ad Placements', icon: Landmark, exact: false },
   { to: '/admin/live-events', label: 'LIVE Events', icon: Video, exact: false },
   { to: '/admin/partners', label: 'Partners', icon: Handshake, exact: false },
   { to: '/admin/boardroom', label: 'Boardroom', icon: Lock, exact: false },
