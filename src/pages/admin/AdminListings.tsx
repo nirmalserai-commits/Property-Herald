@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import type { Listing } from '../../types/database';
-import { Search, Check, X, Flag, ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Search, Check, X, Flag, ChevronDown, ChevronLeft, ChevronRight, Plus, ShieldAlert } from 'lucide-react';
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected' | 'flagged';
 
@@ -15,6 +15,14 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PAGE_SIZE = 20;
+
+type ComplianceReport = {
+  id: string;
+  listing_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+};
 
 export function AdminListings() {
   const { user } = useAuth();
@@ -28,6 +36,37 @@ export function AdminListings() {
   const [rejectModal, setRejectModal] = useState<Listing | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [reports, setReports] = useState<ComplianceReport[]>([]);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [resolveLoading, setResolveLoading] = useState<string | null>(null);
+
+  const fetchReports = useCallback(async () => {
+    setReportsLoading(true);
+    const { data } = await supabase
+      .from('listing_reports')
+      .select('id, listing_id, reason, status, created_at')
+      .eq('status', 'open')
+      .order('created_at', { ascending: false });
+    setReports((data ?? []) as ComplianceReport[]);
+    setReportsLoading(false);
+  }, []);
+
+  const resolveReport = async (report: ComplianceReport, action: 'reinstate' | 'deactivate') => {
+    if (!user?.email) return;
+    setResolveLoading(report.id);
+    const { data: listing } = await supabase.from('listings').select('profile_id, owner_id').eq('id', report.listing_id).maybeSingle();
+    const profileId = listing?.profile_id ?? listing?.owner_id;
+    if (profileId) {
+      await supabase.rpc('resolve_listing_suspension', {
+        p_profile_id: profileId,
+        p_action: action,
+        p_admin_email: user.email,
+        p_notes: action === 'reinstate' ? 'Evidence reviewed and accepted.' : 'Evidence not satisfactory or response window expired.',
+      });
+    }
+    await fetchReports();
+    setResolveLoading(null);
+  };
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -41,7 +80,7 @@ export function AdminListings() {
     setLoading(false);
   }, [page, filter, search]);
 
-  useEffect(() => { fetchListings(); }, [fetchListings]);
+  useEffect(() => { fetchListings(); fetchReports(); }, [fetchListings, fetchReports]);
 
   async function moderate(listing: Listing, status: 'approved' | 'rejected' | 'flagged', reason?: string) {
     setActionLoading(listing.id);
@@ -64,6 +103,34 @@ export function AdminListings() {
   return (
     <AdminLayout>
       <div className="space-y-6">
+        <section className="rounded-2xl border border-red-100 bg-red-50/60 p-5">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 font-serif text-lg font-bold text-navy"><ShieldAlert className="h-5 w-5 text-red-600" /> Compliance reports</h2>
+              <p className="mt-1 text-sm text-gray-600">Open fake-listing reports hide every listing under the reported account until resolved.</p>
+            </div>
+            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">{reports.length} open</span>
+          </div>
+          {reportsLoading ? <div className="h-12 animate-pulse rounded-xl bg-white/70" /> : reports.length === 0 ? (
+            <p className="rounded-xl bg-white/70 p-4 text-sm text-gray-500">No open compliance reports.</p>
+          ) : (
+            <div className="space-y-3">
+              {reports.map(report => (
+                <div key={report.id} className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Listing {report.listing_id.slice(0, 8)} · {new Date(report.created_at).toLocaleString('en-IN')}</p>
+                    <p className="mt-1 text-sm text-gray-700">{report.reason}</p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button onClick={() => resolveReport(report, 'reinstate')} disabled={resolveLoading === report.id} className="rounded-lg border border-green-200 px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50">Reinstate</button>
+                    <button onClick={() => resolveReport(report, 'deactivate')} disabled={resolveLoading === report.id} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50">Deactivate account</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">

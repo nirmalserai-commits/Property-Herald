@@ -71,6 +71,15 @@ export interface Profile {
   account_status: AccountStatus;
   crm_expires_at: string | null;
   wallet_currency: 'INR' | 'AED';
+  pan_number?: string | null;
+  emirates_id_number?: string | null;
+  id_document_url?: string | null;
+  rera_number?: string | null;
+  rera_status?: 'verified' | 'pending' | 'umbrella' | 'not_required' | null;
+  rera_grace_started_at?: string | null;
+  umbrella_authorization_url?: string | null;
+  compliance_suspended_at?: string | null;
+  compliance_suspended_reason?: string | null;
   created_at: string;
   updated_at: string;
   city?: City;
@@ -113,6 +122,10 @@ export interface Listing {
   price?: number | null;
   price_min?: number | null;
   price_max?: number | null;
+  rera_status?: 'verified' | 'pending' | 'umbrella' | 'not_required' | null;
+  compliance_suspended?: boolean;
+  suspended_at?: string | null;
+  suspended_reason?: string | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
@@ -750,4 +763,19 @@ export interface Video {
   display_order: number;
   active: boolean;
   created_at: string;
+}
+
+export interface ListingReport {
+  id: string;
+  listing_id: string;
+  reporter_user_id: string | null;
+  reporter_email: string | null;
+  reporter_ip: string | null;
+  reason: string;
+  status: 'open' | 'investigating' | 'resolved_reinstate' | 'resolved_deactivate' | 'dismissed';
+  admin_notes: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  listing?: Listing;
 }

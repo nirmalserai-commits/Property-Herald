@@ -1,11 +1,14 @@
-// Service worker for the Boardroom PWA.
+// Service worker for the Property Herald PWA.
 // Strategy: cache the app shell on install, serve from cache when the network
-// fails (so the installed app opens even if the Bolt-hosted site is down),
-// and always try the network first for navigation + API/storage requests.
-const SHELL_CACHE = 'boardroom-shell-v3';
+// fails (so the installed app opens even if the host is down), and always try
+// the network first for navigation + API/storage requests.
+const SHELL_CACHE = 'ph-shell-v4';
 const SHELL_ASSETS = [
-  '/boardroom',
   '/',
+  '/listings',
+  '/directory',
+  '/boardroom',
+  '/dashboard',
   '/logo.png.png',
   '/manifest.webmanifest',
 ];
@@ -48,10 +51,10 @@ self.addEventListener('fetch', (event) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone();
-          caches.open(SHELL_CACHE).then((c) => c.put('/boardroom', copy)).catch(() => {});
+          caches.open(SHELL_CACHE).then((c) => c.put('/', copy)).catch(() => {});
           return res;
         })
-        .catch(() => caches.match('/boardroom').then((r) => r || caches.match('/'))),
+        .catch(() => caches.match('/').then((r) => r || caches.match('/listings'))),
     );
     return;
   }

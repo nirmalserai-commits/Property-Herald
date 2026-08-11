@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { AdminLayout } from '../../components/AdminLayout';
-import { Send, Crown, Shield, Brain, Lock, Plus, Paperclip, X, FileText, ImageIcon } from 'lucide-react';
+import { Send, Crown, Shield, Brain, Lock, Plus, Paperclip, X, FileText, ImageIcon, ExternalLink } from 'lucide-react';
 import { boardroomChatStream, boardroomSummarize, ChatMsg, Attachment } from '../../lib/boardroomChat';
 import { supabase } from '../../lib/supabase';
 
@@ -25,8 +25,6 @@ interface DbMsg {
   created_at: string;
   attachments: BoardroomAttachment[] | null;
 }
-
-const BOARDROOM_PASSWORD = 'PropertyHerald2026';
 
 const PERSONAS = {
   neena: {
@@ -125,11 +123,6 @@ function isImageType(type: string) { return IMAGE_TYPES.includes(type.toLowerCas
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export function AdminBoardroom() {
-  // Auth
-  const [authed, setAuthed] = useState(() => localStorage.getItem('br_auth') === 'ok');
-  const [pwInput, setPwInput] = useState('');
-  const [pwError, setPwError] = useState('');
-
   // Chat state
   const [active, setActive] = useState<Persona>('neena');
   const [sessionIds, setSessionIds] = useState<Record<Persona, string>>(empty(''));
@@ -157,11 +150,11 @@ export function AdminBoardroom() {
 
   // Load daughter data when tab becomes active
   useEffect(() => {
-    if (authed && !loaded.current.has(active)) {
+    if (!loaded.current.has(active)) {
       loaded.current.add(active);
       loadDaughter(active);
     }
-  }, [active, authed]);
+  }, [active]);
 
   // ── DB OPERATIONS ──────────────────────────────────────────────────────────
 
@@ -385,65 +378,6 @@ export function AdminBoardroom() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
-  // ── PASSWORD GATE ──────────────────────────────────────────────────────────
-
-  function checkPassword() {
-    if (pwInput === BOARDROOM_PASSWORD) {
-      localStorage.setItem('br_auth', 'ok');
-      setAuthed(true);
-      setPwError('');
-    } else {
-      setPwError('Incorrect access code. This channel is classified.');
-    }
-  }
-
-  if (!authed) {
-    return (
-      <AdminLayout>
-        <div className="flex items-center justify-center min-h-[70vh]">
-          <div className="w-full max-w-sm">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 shadow-2xl">
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-red-950 border border-red-800/60 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-7 h-7 text-red-400" />
-                </div>
-                <h1 className="text-white font-bold text-xl mb-1 font-serif">Command Boardroom</h1>
-                <p className="text-gray-500 text-sm">Classified internal channel</p>
-                <p className="text-gray-600 text-xs mt-0.5">Property Herald N-Girls HQ · Royal Council</p>
-              </div>
-
-              <div className="space-y-3">
-                <input
-                  type="password"
-                  value={pwInput}
-                  onChange={e => setPwInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && checkPassword()}
-                  placeholder="Enter access code"
-                  autoFocus
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-600 text-white rounded-xl text-sm placeholder-gray-500 outline-none focus:border-red-700 focus:ring-2 focus:ring-red-900/40 transition-all"
-                />
-                {pwError && (
-                  <p className="text-red-400 text-xs flex items-center gap-1.5">
-                    <span className="w-1 h-1 bg-red-500 rounded-full flex-shrink-0" />
-                    {pwError}
-                  </p>
-                )}
-                <button
-                  onClick={checkPassword}
-                  className="w-full py-3 bg-red-800 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                >
-                  Access Boardroom
-                </button>
-              </div>
-
-              <p className="text-center text-gray-700 text-xs mt-6">For authorised personnel only</p>
-            </div>
-          </div>
-        </div>
-      </AdminLayout>
-    );
-  }
-
   // ── MAIN CHAT UI ───────────────────────────────────────────────────────────
 
   const p = PERSONAS[active];
@@ -469,6 +403,14 @@ export function AdminBoardroom() {
             <p className="text-xs text-gray-600 ml-9">Persistent memory · Private internal channel · Royal Council R-01, R-02, R-03</p>
           </div>
           <div className="flex items-center gap-2">
+            <a
+              href="/boardroom"
+              title="Open the full Boardroom hub (Neena, Nora, Nita, Neetu, Naksha, Conference)"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 border border-gray-700 hover:bg-gray-800 text-gray-300 hover:text-white text-xs font-semibold rounded-full transition-all"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open Full Boardroom Hub
+            </a>
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-full">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
               <span className="text-xs text-gray-400 font-medium">Secure · Live</span>

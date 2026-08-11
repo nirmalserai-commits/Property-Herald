@@ -28,7 +28,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select('*, city:cities(*)')
       .eq('id', userId)
       .single();
-    if (!error && data) setProfile(data as Profile);
+    if (!error && data) {
+      setProfile(data as Profile);
+    } else if (error && error.code === 'PGRST116') {
+      const { data: userData } = await supabase.auth.getUser();
+      const u = userData?.user;
+      if (!u) return;
+      const meta = u.user_metadata || {};
+      const isGoogle = u.app_metadata?.provider === 'google';
+      if (!isGoogle) return;
+      await supabase.from('profiles').upsert({
+        id: u.id,
+        email: u.email || '',
+        business_name: meta.full_name || meta.name || 'New Member',
+        business_type: 'agent',
+        contact_person: meta.full_name || meta.name || 'New Member',
+        phone: '',
+        whatsapp_number: '',
+        city_id: null,
+        description: null,
+        website_url: null,
+        market_track: 'india',
+        wallet_currency: 'INR',
+      });
+      const { data: retry } = await supabase
+        .from('profiles')
+        .select('*, city:cities(*)')
+        .eq('id', userId)
+        .single();
+      if (retry) setProfile(retry as Profile);
+    }
   };
 
   const refreshProfile = async () => {

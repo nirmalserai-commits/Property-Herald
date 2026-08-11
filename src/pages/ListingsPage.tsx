@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { City, Listing, Profile } from '../types/database';
-import { MapPin, Search, Filter, X, Calendar, Phone, Building2, Home, Briefcase, ChevronDown, Star, ArrowRight } from 'lucide-react';
+import { MapPin, Search, Filter, X, Calendar, Phone, Building2, Home, Briefcase, ChevronDown, Star, ArrowRight, Flag, ShieldAlert } from 'lucide-react';
 import { ShowApartmentBookingModal } from '../components/ShowApartmentBookingModal';
+import { ReportListingModal } from '../components/ReportListingModal';
 
 type ListingWithProfile = Listing & { profile: Profile; city: City };
 
@@ -40,6 +41,7 @@ export function ListingsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [bookingListing, setBookingListing] = useState<ListingWithProfile | null>(null);
+  const [reportListing, setReportListing] = useState<ListingWithProfile | null>(null);
 
   useEffect(() => {
     supabase.from('cities').select('*').order('name').then(({ data }) => {
@@ -56,6 +58,7 @@ export function ListingsPage() {
         .select('*, profile:profiles(*), city:cities(*)')
         .eq('is_active', true)
         .eq('moderation_status', 'approved')
+        .eq('compliance_suspended', false)
         .neq('market_track', 'dubai')
         .order('is_hot', { ascending: false })
         .order('is_featured', { ascending: false })
@@ -263,6 +266,7 @@ export function ListingsPage() {
                 key={listing.id}
                 listing={listing}
                 onBook={() => setBookingListing(listing)}
+                onReport={() => setReportListing(listing)}
               />
             ))}
           </div>
@@ -275,11 +279,18 @@ export function ListingsPage() {
           onClose={() => setBookingListing(null)}
         />
       )}
+
+      {reportListing && (
+        <ReportListingModal
+          listing={reportListing}
+          onClose={() => setReportListing(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ListingCard({ listing, onBook }: { listing: ListingWithProfile; onBook: () => void }) {
+function ListingCard({ listing, onBook, onReport }: { listing: ListingWithProfile; onBook: () => void; onReport: () => void }) {
   const profile = listing.profile;
 
   const priceFmt = (n: number | null) => {
@@ -309,6 +320,21 @@ function ListingCard({ listing, onBook }: { listing: ListingWithProfile; onBook:
           {listing.is_hot && (
             <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wider border border-red-100">
               Hot
+            </span>
+          )}
+          {listing.rera_status === 'pending' && (
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider border border-amber-200 flex items-center gap-1">
+              <ShieldAlert className="w-2.5 h-2.5" /> RERA Pending
+            </span>
+          )}
+          {listing.rera_status === 'verified' && (
+            <span className="px-2 py-0.5 rounded-full bg-green-50 text-green-700 text-[10px] font-bold uppercase tracking-wider border border-green-100">
+              RERA Verified
+            </span>
+          )}
+          {listing.rera_status === 'umbrella' && (
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider border border-blue-100">
+              RERA Umbrella
             </span>
           )}
           {listing.property_types?.map(t => (
@@ -384,6 +410,13 @@ function ListingCard({ listing, onBook }: { listing: ListingWithProfile; onBook:
             <ArrowRight className="w-3 h-3" />
           </button>
         </div>
+        <button
+          onClick={onReport}
+          className="mt-2 flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+        >
+          <Flag className="w-3 h-3" />
+          Report this listing
+        </button>
       </div>
     </div>
   );
