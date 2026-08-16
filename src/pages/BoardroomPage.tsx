@@ -211,15 +211,11 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
   const authed = !!session;
 
   useEffect(() => {
-    if (authed && !loaded.current) {
-      loaded.current = true;
-      loadBoardroom();
-    }
-  }, [authed, persona]);
-
-  useEffect(() => {
-    if (authed) loaded.current = false;
-  }, [persona]);
+  if (authed) {
+    loaded.current = true;
+    loadBoardroom();
+  }
+}, [authed, persona]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
