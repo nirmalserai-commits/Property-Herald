@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Sparkles } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface ChatMessage {
   role: 'user' | 'ai';
@@ -9,6 +10,8 @@ interface ChatMessage {
 const EDGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/neetu-chat`;
 
 export function NeetuChatWidget() {
+  const { session } = useAuth();
+  const userId = session?.user?.id ?? null;
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -41,6 +44,7 @@ export function NeetuChatWidget() {
           message: text,
           conversationHistory: history.map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content })),
           conversationStartedAt,
+          user_id: userId,
         }),
         signal: AbortSignal.timeout(30000),
       });
@@ -56,7 +60,7 @@ export function NeetuChatWidget() {
     } finally {
       setTyping(false);
     }
-  }, [messages, typing, conversationStartedAt]);
+  }, [messages, typing, conversationStartedAt, userId]);
 
   function handleOpen() {
     if (!open) {
