@@ -12,7 +12,7 @@ import {
 const PROPERTY_TYPES = ['residential', 'commercial'] as const;
 const DEAL_TYPES = ['buy', 'rent'] as const;
 
-const SUBMIT_COST = 25;
+const SUBMIT_COST = 2;
 
 export function SubmitListingPage() {
   const navigate = useNavigate();
@@ -174,7 +174,7 @@ export function SubmitListingPage() {
             </div>
             <p className="text-gray-500">
               List your property on Property Herald. Costs{' '}
-              <span className="font-semibold" style={{ color: '#c9a84c' }}>25 tokens</span> and goes live after admin approval.
+              <span className="font-semibold" style={{ color: '#c9a84c' }}>2 tokens</span> and goes live after admin approval.
             </p>
           </div>
 
@@ -202,7 +202,7 @@ export function SubmitListingPage() {
                 Buy Tokens
               </button>
             ) : (
-              <span className="text-sm text-gray-400">Cost: 25 tokens</span>
+              <span className="text-sm text-gray-400">Cost: 2 tokens</span>
             )}
           </div>
 
