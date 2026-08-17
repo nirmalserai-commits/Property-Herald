@@ -5,6 +5,7 @@ import type { Listing, Lead, Profile, City, MarketTrack } from '../types/databas
 import {
   Building2, Users, TrendingUp, Phone, Mail, Flame, Plus, Edit3,
   Save, Upload, X, Check, Clock, Coins, Image as ImageIcon, Eye, Sparkle,
+  ShieldCheck, FileText,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'projects' | 'leads' | 'profile' | 'tokens' | 'sales-offer';
@@ -53,6 +54,10 @@ export function DeveloperDashboardPage() {
   const [crmExpired, setCrmExpired] = useState(false);
   const [profileForm, setProfileForm] = useState({ business_name: '', phone: '', city_id: '', logo_url: '' });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [identityForm, setIdentityForm] = useState({ pan_number: '', emirates_id_number: '' });
+  const [identityDocUrl, setIdentityDocUrl] = useState('');
+  const [uploadingIdentityDoc, setUploadingIdentityDoc] = useState(false);
+  const [savingIdentity, setSavingIdentity] = useState(false);
   const [tokenCosts, setTokenCosts] = useState<Record<string, number>>({});
 
   const marketTrack: MarketTrack = (profile?.market_track as MarketTrack) ?? 'india';
@@ -90,6 +95,12 @@ export function DeveloperDashboardPage() {
       city_id: profile?.city_id ?? '',
       logo_url: profile?.logo_url ?? '',
     });
+
+    setIdentityForm({
+      pan_number: profile?.pan_number ?? '',
+      emirates_id_number: profile?.emirates_id_number ?? '',
+    });
+    setIdentityDocUrl(profile?.id_document_url ?? '');
 
     setLoading(false);
   }, [user, profile]);
@@ -191,6 +202,39 @@ export function DeveloperDashboardPage() {
     }).eq('id', user.id);
     if (!error) setSuccess('Profile updated.');
     setSavingProfile(false);
+  }
+
+  async function handleUploadIdentityDoc(file: File) {
+    if (!user) return;
+    setUploadingIdentityDoc(true);
+    const path = `identity-docs/${user.id}-${Date.now()}-${file.name}`;
+    const { error: upErr } = await supabase.storage.from('assets').upload(path, file);
+    if (!upErr) {
+      const { data: pub } = supabase.storage.from('assets').getPublicUrl(path);
+      setIdentityDocUrl(pub.publicUrl);
+    } else {
+      setError('Document upload failed. Please try again.');
+    }
+    setUploadingIdentityDoc(false);
+  }
+
+  async function handleSaveIdentity() {
+    if (!user) return;
+    setSavingIdentity(true);
+    setError(null);
+    const payload: Record<string, unknown> = { id_document_url: identityDocUrl || null };
+    if (isDubai) {
+      payload.emirates_id_number = identityForm.emirates_id_number || null;
+    } else {
+      payload.pan_number = identityForm.pan_number || null;
+    }
+    const { error } = await supabase.from('profiles').update(payload).eq('id', user.id);
+    if (!error) {
+      setSuccess('Identity documents submitted. Our team will review and verify shortly — you\'ll be able to publish live listings once verified.');
+    } else {
+      setError('Could not save your identity documents. Please try again.');
+    }
+    setSavingIdentity(false);
   }
 
   async function handleRenewCrm(days: number) {
@@ -521,6 +565,103 @@ export function DeveloperDashboardPage() {
               className="px-6 py-2.5 bg-navy text-cream rounded-xl text-sm font-medium hover:bg-navy-800 disabled:opacity-50 transition-colors flex items-center gap-2">
               {savingProfile ? <span className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
               Save Profile
+            </button>
+          </div>
+        )}
+
+        {/* Identity Verification */}
+        {tab === 'profile' && (
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 max-w-lg mt-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-serif font-bold text-navy text-lg flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5" style={{ color: '#c9a84c' }} />
+                Identity Verification
+              </h3>
+              {profile?.identity_verified ? (
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> Verified
+                </span>
+              ) : identityDocUrl ? (
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" /> Pending Review
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                  Not Submitted
+                </span>
+              )}
+            </div>
+
+            <p className="text-sm text-gray-500">
+              {isDubai
+                ? 'A verified Emirates ID is required before any listing can go live on the platform.'
+                : 'A verified PAN is required before any listing can go live on the platform.'}
+            </p>
+
+            {isDubai ? (
+              <FormField label="Emirates ID Number">
+                <input
+                  type="text"
+                  value={identityForm.emirates_id_number}
+                  onChange={e => setIdentityForm(f => ({ ...f, emirates_id_number: e.target.value }))}
+                  placeholder="784-XXXX-XXXXXXX-X"
+                  className="input-field"
+                />
+              </FormField>
+            ) : (
+              <FormField label="PAN Number">
+                <input
+                  type="text"
+                  value={identityForm.pan_number}
+                  onChange={e => setIdentityForm(f => ({ ...f, pan_number: e.target.value.toUpperCase() }))}
+                  placeholder="ABCDE1234F"
+                  maxLength={10}
+                  className="input-field"
+                />
+              </FormField>
+            )}
+
+            <FormField label={isDubai ? 'Emirates ID Document' : 'PAN Card Document'}>
+              {identityDocUrl ? (
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                  <FileText className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <a href={identityDocUrl} target="_blank" rel="noreferrer" className="text-sm text-navy underline truncate flex-1">
+                    View uploaded document
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setIdentityDocUrl('')}
+                    className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-300 text-sm text-gray-500 cursor-pointer hover:border-gray-400 transition-colors">
+                  {uploadingIdentityDoc ? (
+                    <span className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  {uploadingIdentityDoc ? 'Uploading...' : 'Upload document (PDF or image)'}
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    disabled={uploadingIdentityDoc}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadIdentityDoc(f); }}
+                  />
+                </label>
+              )}
+            </FormField>
+
+            <button
+              onClick={handleSaveIdentity}
+              disabled={savingIdentity || uploadingIdentityDoc}
+              className="px-6 py-2.5 bg-navy text-cream rounded-xl text-sm font-medium hover:bg-navy-800 disabled:opacity-50 transition-colors flex items-center gap-2"
+            >
+              {savingIdentity ? <span className="w-4 h-4 border-2 border-cream border-t-transparent rounded-full animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+              Submit for Verification
             </button>
           </div>
         )}
