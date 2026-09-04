@@ -34,8 +34,8 @@ export function AdminPublicAmbassadors() {
     setUploading(true);
     const ext = file.name.split('.').pop();
     const path = `ambassadors/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('assets').upload(path, file);
-    if (!error) { const { data } = supabase.storage.from('assets').getPublicUrl(path); setForm(f => ({ ...f, profile_picture_url: data.publicUrl })); }
+    const { error } = await supabase.storage.from('Assets').upload(path, file);
+    if (!error) { const { data } = supabase.storage.from('Assets').getPublicUrl(path); setForm(f => ({ ...f, profile_picture_url: data.publicUrl })); }
     setUploading(false);
   }
 

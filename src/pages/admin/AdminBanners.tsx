@@ -363,9 +363,9 @@ export function AdminBanners() {
                       if (!file || !user) return;
                       setUploading(true);
                       const path = `banners/${Date.now()}-${file.name}`;
-                      const { error: upErr } = await supabase.storage.from('assets').upload(path, file);
+                      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
                       if (!upErr) {
-                        const { data: pub } = supabase.storage.from('assets').getPublicUrl(path);
+                        const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
                         setForm(f => ({ ...f, image_url: pub.publicUrl }));
                       }
                       setUploading(false);

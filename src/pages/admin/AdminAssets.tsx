@@ -23,10 +23,10 @@ export function AdminAssets() {
 
   async function fetchFiles() {
     setLoading(true);
-    const { data, error } = await supabase.storage.from('assets').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+    const { data, error } = await supabase.storage.from('Assets').list('', { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
     if (!error && data) {
       const mapped = data.filter(f => f.name).map(f => {
-        const { data: urlData } = supabase.storage.from('assets').getPublicUrl(f.name);
+        const { data: urlData } = supabase.storage.from('Assets').getPublicUrl(f.name);
         return { name: f.name, id: f.id, publicUrl: urlData.publicUrl, metadata: (f.metadata || null) as AssetFile['metadata'] };
       });
       setFiles(mapped);
@@ -50,7 +50,7 @@ export function AdminAssets() {
   async function handleUpload(file: File) {
     setUploading(true);
     const path = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from('assets').upload(path, file);
+    const { error } = await supabase.storage.from('Assets').upload(path, file);
     if (!error) fetchFiles();
     setUploading(false);
   }
@@ -58,9 +58,9 @@ export function AdminAssets() {
   async function handleTeamUpload(name: string, file: File) {
     setUploadingMember(name);
     const path = `team/${Date.now()}-${file.name.replace(/\s/g, '_')}`;
-    const { error } = await supabase.storage.from('assets').upload(path, file);
+    const { error } = await supabase.storage.from('Assets').upload(path, file);
     if (error) { setUploadingMember(null); return; }
-    const { data: urlData } = supabase.storage.from('assets').getPublicUrl(path);
+    const { data: urlData } = supabase.storage.from('Assets').getPublicUrl(path);
     const key = `team_photo_${name}`;
     const { data: existing } = await supabase.from('site_config').select('key').eq('key', key).maybeSingle();
     if (existing) {
@@ -81,7 +81,7 @@ export function AdminAssets() {
 
   function copyUrl(url: string) { navigator.clipboard.writeText(url); setCopied(url); setTimeout(() => setCopied(null), 2000); }
 
-  async function handleDelete(name: string) { if (!confirm('Delete this file?')) return; await supabase.storage.from('assets').remove([name]); fetchFiles(); }
+  async function handleDelete(name: string) { if (!confirm('Delete this file?')) return; await supabase.storage.from('Assets').remove([name]); fetchFiles(); }
 
   function getIcon(mime: string | undefined) { if (mime?.startsWith('image/')) return Image; if (mime?.startsWith('video/')) return Film; return FileText; }
 

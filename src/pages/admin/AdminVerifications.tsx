@@ -134,6 +134,15 @@ export function AdminVerifications() {
     setIdActionLoading(null);
   }
 
+  async function handleViewIdentityDoc(path: string) {
+    const { data, error } = await supabase.storage.from('identity-documents').createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) {
+      alert('Could not open document: ' + (error?.message ?? 'unknown error'));
+      return;
+    }
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  }
+
   async function handleRejectIdentity() {
     if (!idRejectModal) return;
     setIdActionLoading(idRejectModal.id);
@@ -326,7 +335,7 @@ export function AdminVerifications() {
                             {p.id_document_url && (
                               <div className="bg-gray-50 rounded-xl p-3">
                                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-1">Document</p>
-                                <a href={p.id_document_url} target="_blank" rel="noopener noreferrer" className="text-sm text-navy font-semibold hover:text-gold transition-colors">View →</a>
+                                <button type="button" onClick={() => handleViewIdentityDoc(p.id_document_url!)} className="text-sm text-navy font-semibold hover:text-gold transition-colors">View →</button>
                               </div>
                             )}
                             <div className="bg-gray-50 rounded-xl p-3">

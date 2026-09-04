@@ -55,7 +55,8 @@ export function DeveloperDashboardPage() {
   const [profileForm, setProfileForm] = useState({ business_name: '', phone: '', city_id: '', logo_url: '' });
   const [savingProfile, setSavingProfile] = useState(false);
   const [identityForm, setIdentityForm] = useState({ pan_number: '', emirates_id_number: '' });
-  const [identityDocUrl, setIdentityDocUrl] = useState('');
+  const [identityDocUrl, setIdentityDocUrl] = useState(''); // signed URL, for display only
+  const [identityDocPath, setIdentityDocPath] = useState(''); // raw storage path, persisted to DB
   const [uploadingIdentityDoc, setUploadingIdentityDoc] = useState(false);
   const [savingIdentity, setSavingIdentity] = useState(false);
   const [tokenCosts, setTokenCosts] = useState<Record<string, number>>({});
@@ -100,7 +101,14 @@ export function DeveloperDashboardPage() {
       pan_number: profile?.pan_number ?? '',
       emirates_id_number: profile?.emirates_id_number ?? '',
     });
-    setIdentityDocUrl(profile?.id_document_url ?? '');
+    const existingPath = profile?.id_document_url ?? '';
+    setIdentityDocPath(existingPath);
+    if (existingPath) {
+      const { data: signed } = await supabase.storage.from('identity-documents').createSignedUrl(existingPath, 3600);
+      setIdentityDocUrl(signed?.signedUrl ?? '');
+    } else {
+      setIdentityDocUrl('');
+    }
 
     setLoading(false);
   }, [user, profile]);
@@ -207,11 +215,15 @@ export function DeveloperDashboardPage() {
   async function handleUploadIdentityDoc(file: File) {
     if (!user) return;
     setUploadingIdentityDoc(true);
-    const path = `identity-docs/${user.id}-${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
+    // Path must start with the user's own uid — required by the "Users can view
+    // their own identity document" storage RLS policy on the private
+    // identity-documents bucket.
+    const path = `${user.id}/${Date.now()}-${file.name}`;
+    const { error: upErr } = await supabase.storage.from('identity-documents').upload(path, file);
     if (!upErr) {
-      const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
-      setIdentityDocUrl(pub.publicUrl);
+      setIdentityDocPath(path);
+      const { data: signed } = await supabase.storage.from('identity-documents').createSignedUrl(path, 3600);
+      setIdentityDocUrl(signed?.signedUrl ?? '');
     } else {
       setError('Document upload failed. Please try again.');
     }
@@ -222,7 +234,7 @@ export function DeveloperDashboardPage() {
     if (!user) return;
     setSavingIdentity(true);
     setError(null);
-    const payload: Record<string, unknown> = { id_document_url: identityDocUrl || null };
+    const payload: Record<string, unknown> = { id_document_url: identityDocPath || null };
     if (isDubai) {
       payload.emirates_id_number = identityForm.emirates_id_number || null;
     } else {
@@ -581,7 +593,7 @@ export function DeveloperDashboardPage() {
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> Verified
                 </span>
-              ) : identityDocUrl ? (
+              ) : identityDocPath ? (
                 <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" /> Pending Review
                 </span>
@@ -630,7 +642,7 @@ export function DeveloperDashboardPage() {
                   </a>
                   <button
                     type="button"
-                    onClick={() => setIdentityDocUrl('')}
+                    onClick={() => { setIdentityDocUrl(''); setIdentityDocPath(''); }}
                     className="text-gray-400 hover:text-red-500 flex-shrink-0"
                   >
                     <X className="w-4 h-4" />
