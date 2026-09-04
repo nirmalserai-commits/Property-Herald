@@ -116,9 +116,9 @@ export function DeveloperDashboardPage() {
     if (!user) return;
     setUploading(true);
     const path = `listings/${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from('assets').upload(path, file);
+    const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
     if (!upErr) {
-      const { data: pub } = supabase.storage.from('assets').getPublicUrl(path);
+      const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
       setForm(f => ({ ...f, photos: [...f.photos, pub.publicUrl] }));
     }
     setUploading(false);
@@ -208,9 +208,9 @@ export function DeveloperDashboardPage() {
     if (!user) return;
     setUploadingIdentityDoc(true);
     const path = `identity-docs/${user.id}-${Date.now()}-${file.name}`;
-    const { error: upErr } = await supabase.storage.from('assets').upload(path, file);
+    const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
     if (!upErr) {
-      const { data: pub } = supabase.storage.from('assets').getPublicUrl(path);
+      const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
       setIdentityDocUrl(pub.publicUrl);
     } else {
       setError('Document upload failed. Please try again.');
