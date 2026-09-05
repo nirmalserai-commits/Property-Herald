@@ -141,6 +141,7 @@ export function AmbassadorWidget() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [intentScore, setIntentScore] = useState(0);
   const [noraLeadId, setNoraLeadId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [showQuickReplies, setShowQuickReplies] = useState(true);
   const [dismissed, setDismissed] = useState(false);
   const [noraRestMode, setNoraRestMode] = useState(false);
