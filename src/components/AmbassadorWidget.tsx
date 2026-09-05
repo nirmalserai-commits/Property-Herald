@@ -469,12 +469,24 @@ export function AmbassadorWidget() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`,
         },
-        body: JSON.stringify({ messages: updated, user_id: user?.id || null, lead_id: noraLeadId }),
+        body: JSON.stringify({ messages: updated, user_id: user?.id || null, lead_id: noraLeadId, voice_enabled: true }),
       });
       if (res.ok) {
         const data = await res.json();
         if (data.reply) reply = data.reply;
         if (data.lead_id) { setNoraLeadId(data.lead_id); returnedLeadId = data.lead_id; }
+        if (data.audio) {
+          try {
+            const blob = new Blob(
+              [Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))],
+              { type: 'audio/wav' }
+            );
+            const url = URL.createObjectURL(blob);
+            if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
+            audioRef.current = new Audio(url);
+            audioRef.current.play().catch(() => {});
+          } catch { /* audio failed silently */ }
+        }
       }
     } catch {
       // fallback to default reply
