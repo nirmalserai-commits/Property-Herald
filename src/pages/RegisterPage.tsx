@@ -176,7 +176,7 @@ export function RegisterPage() {
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           {error && (
-            <div className="flex items-center p-4 bg-red-50 text-red-700 rounded-xl mb-6">
+            <div className="flex items-center p-4 bg-blue-50 text-blue-800 rounded-xl mb-6">
               <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
               <p className="text-sm">{error}</p>
             </div>
