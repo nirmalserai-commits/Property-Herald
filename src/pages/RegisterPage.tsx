@@ -88,7 +88,7 @@ export function RegisterPage() {
     return true;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
@@ -97,22 +97,38 @@ export function RegisterPage() {
     const { error: signUpError } = await signUp(formData.email, formData.password);
     if (signUpError) { setError(signUpError.message || 'Registration failed.'); setLoading(false); return; }
 
-    const { data: { user: newUser } } = await supabase.auth.getUser();
-    if (newUser) {
-      await supabase.from('profiles').upsert({
-        id: newUser.id,
-        email: formData.email,
-        business_name: formData.business_name,
-        business_type: formData.business_type,
-        contact_person: formData.contact_person,
-        phone: formData.phone,
-        whatsapp_number: formData.whatsapp_number,
-        city_id: formData.city_id,
-        description: formData.description || null,
-        website_url: formData.website_url || null,
-        market_track: formData.market_track,
-        wallet_currency: formData.market_track === 'dubai' ? 'AED' : 'INR',
-      });
+    let newUser = null;
+    for (let attempt = 0; attempt < 3 && !newUser; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 600));
+      const { data } = await supabase.auth.getUser();
+      newUser = data?.user ?? null;
+    }
+
+    if (!newUser) {
+      setError('Account created, but we could not finish saving your profile. Please check your email to confirm your account, then log in to complete your profile in Settings.');
+      setLoading(false);
+      return;
+    }
+
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: newUser.id,
+      email: formData.email,
+      business_name: formData.business_name,
+      business_type: formData.business_type,
+      contact_person: formData.contact_person,
+      phone: formData.phone,
+      whatsapp_number: formData.whatsapp_number,
+      city_id: formData.city_id,
+      description: formData.description || null,
+      website_url: formData.website_url || null,
+      market_track: formData.market_track,
+      wallet_currency: formData.market_track === 'dubai' ? 'AED' : 'INR',
+    });
+
+    if (profileError) {
+      setError('Account created, but some profile details could not be saved. Please complete your profile in Settings after logging in.');
+      setLoading(false);
+      return;
     }
 
     navigate('/dashboard');
@@ -346,7 +362,7 @@ export function RegisterPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input type="tel" value={formData.phone} onChange={e => set('phone', e.target.value)} required placeholder="+91 9876543210"
+                        <input type="tel" value={formData.phone} onChange={e => set('phone', e.target.value)} required placeholder={formData.market_track === 'dubai' ? '+971 501234567' : '+91 9876543210'}
                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none" />
                       </div>
                     </div>
