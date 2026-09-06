@@ -105,7 +105,7 @@ export function RegisterPage() {
     }
 
     if (!newUser) {
-      setError('Account created, but we could not finish saving your profile. Please check your email to confirm your account, then log in to complete your profile in Settings.');
+      setError(`Welcome to Property Herald! Your account has been created. For your security, please verify your email — we've sent a confirmation link to ${formData.email}. Once verified, log back in and your profile will be ready — you're one step away from India's most curated AI-powered real estate network.`);
       setLoading(false);
       return;
     }
