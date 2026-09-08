@@ -400,17 +400,43 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
   const [tokenAction, setTokenAction] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<{ listingId: string; msg: string } | null>(null);
   const emptyForm = { title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0, property_types: [] as string[], deal_types: [] as string[] };
-  const [formData, setFormData] = useState(emptyForm);
+      const [formData, setFormData] = useState(emptyForm);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const userId = (await supabase.auth.getUser()).data.user!.id;
-    const data = { ...formData, profile_id: userId, specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean) };
-    if (editingListing) await supabase.from('listings').update(data).eq('id', editingListing.id);
-    else await supabase.from('listings').insert(data);
-    setShowForm(false); setEditingListing(null); setFormData(emptyForm); onRefresh();
-  };
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setSaving(true);
+      setSaveError(null);
 
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setSaveError('Your session has expired. Please sign in again.');
+        setSaving(false);
+        return;
+      }
+
+      const { title, ...rest } = formData;
+      const data = {
+        ...rest,
+        project_name: title,
+        profile_id: user.id,
+        specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
+      };
+
+      const { error } = editingListing
+        ? await supabase.from('listings').update(data).eq('id', editingListing.id)
+        : await supabase.from('listings').insert(data);
+
+      setSaving(false);
+
+      if (error) {
+        setSaveError(`Could not save the listing: ${error.message}`);
+        return;
+      }
+
+      setShowForm(false); setEditingListing(null); setFormData(emptyForm); onRefresh();
+    };
   const handleDelete = async (id: string) => {
     if (confirm('Delete this listing?')) { await supabase.from('listings').delete().eq('id', id); onRefresh(); }
   };
@@ -532,11 +558,16 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-warm-gray hover:text-navy text-sm">Cancel</button>
-                  <button type="submit" className="px-6 py-2 bg-navy text-cream font-medium rounded-xl hover:bg-navy-800 text-sm">{editingListing ? 'Update' : 'Create'}</button>
-                </div>
-              </form>
+               {saveError && (
+  <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 text-sm rounded-xl">
+    <X className="w-4 h-4 flex-shrink-0" />{saveError}
+  </div>
+)}
+<div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-warm-gray hover:text-navy text-sm">Cancel</button>
+  <button type="submit" disabled={saving} className="px-6 py-2 bg-navy text-cream font-medium rounded-xl hover:bg-navy-800 text-sm disabled:opacity-50">{saving ? 'Saving…' : (editingListing ? 'Update' : 'Create')}</button>
+</div>
+</form>
             </div>
           </div>
         </div>
