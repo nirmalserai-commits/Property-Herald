@@ -164,7 +164,7 @@ export function DeveloperDashboardPage() {
 
     setSubmitting(true);
     const insertData: Record<string, unknown> = {
-      title: form.title,
+      project_name: form.title,
       description: form.description,
       price: parseInt(form.price),
       property_types: [form.property_type],
