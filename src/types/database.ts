@@ -126,10 +126,14 @@ export interface Listing {
   compliance_suspended?: boolean;
   suspended_at?: string | null;
   suspended_reason?: string | null;
+  locality_id?: string | null;
+  sector?: string | null;
+  brochure_url?: string | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
   city?: City;
+  locality?: Locality;
 }
 
 export interface Magazine {
