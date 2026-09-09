@@ -420,6 +420,7 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
       const data = {
         ...rest,
         project_name: title,
+              location: cities.find(c => c.id === formData.city_id)?.name || '',
         profile_id: user.id,
         specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
       };
