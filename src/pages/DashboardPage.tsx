@@ -489,14 +489,15 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
     setTokenAction(listing.id + feature);
     setTokenError(null);
 
-    const { data } = await supabase.rpc('burn_own_tokens', {
+    const { data, error } = await supabase.rpc('burn_own_tokens', {
       p_amount: cost,
       p_reason: label,
       p_listing_id: listing.id,
     });
+    const result = Array.isArray(data) ? data[0] : data;
 
-    if (!data?.success) {
-      setTokenError({ listingId: listing.id, msg: data?.error || 'Token burn failed' });
+    if (error || !result?.success) {
+      setTokenError({ listingId: listing.id, msg: result?.error || error?.message || 'Token burn failed' });
       setTokenAction(null);
       return;
     }
@@ -939,8 +940,9 @@ function SettingsTab({ profile, user, wallet, tokenCosts, onRefresh }: { profile
       return;
     }
     setBadgeAction(true); setBadgeError('');
-    const { data } = await supabase.rpc('burn_own_tokens', { p_amount: cost, p_reason: 'Verified Badge — 30 days' });
-    if (!data?.success) { setBadgeError(data?.error || 'Failed'); setBadgeAction(false); return; }
+    const { data, error } = await supabase.rpc('burn_own_tokens', { p_amount: cost, p_reason: 'Verified Badge — 30 days' });
+    const result = Array.isArray(data) ? data[0] : data;
+    if (error || !result?.success) { setBadgeError(result?.error || error?.message || 'Failed'); setBadgeAction(false); return; }
     await supabase.from('profiles').update({ verified_badge_active: true, is_verified: true, verified_badge_expires_at: addMonths(1) }).eq('id', user.id);
     setBadgeAction(false);
     onRefresh();
