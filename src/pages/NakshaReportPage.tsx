@@ -35,7 +35,13 @@ export function NakshaReportPage() {
     setPaying(true);
     if (paymentMethod === 'tokens' && walletBalance < reportTokens) { alert('Not enough tokens.'); setPaying(false); return; }
     if (paymentMethod === 'tokens') {
-      await supabase.rpc('burn_own_tokens', { p_amount: reportTokens, p_reason: `Naksha Report` });
+      const { data, error } = await supabase.rpc('burn_own_tokens', { p_amount: reportTokens, p_reason: `Naksha Report` });
+      const result = Array.isArray(data) ? data[0] : data;
+      if (error || !result?.success) {
+        alert(result?.error || error?.message || 'Token payment failed. Please try again.');
+        setPaying(false);
+        return;
+      }
     }
     const { data: reportData } = await supabase.from('neighbourhood_data').select('*').eq('locality_id', selectedLocality).maybeSingle();
     const { data: purchaseData } = await supabase.from('naksha_reports').insert({
