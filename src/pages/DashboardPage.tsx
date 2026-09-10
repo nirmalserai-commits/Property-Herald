@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import type { Listing, Inquiry, MagazineAd, City, TokenWallet, TokenTransaction } from '../types/database';
+import type { Listing, Inquiry, MagazineAd, City, Locality, TokenWallet, TokenTransaction } from '../types/database';
 import {
   Building2, Users, MessageCircle, BookOpen, Settings, Plus, TrendingUp, Eye,
   Phone, Calendar, CheckCircle, ChevronRight, Edit, Trash2, Coins, AlertTriangle,
-  Star, Flame, Shield, Receipt, ArrowRight, X, Zap
+  Star, Flame, Shield, Receipt, ArrowRight, X, Zap, Upload, Image as ImageIcon, FileText
 } from 'lucide-react';
 
 interface TokenCosts {
@@ -47,6 +47,7 @@ export function DashboardPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [magazineAds, setMagazineAds] = useState<MagazineAd[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [localities, setLocalities] = useState<Locality[]>([]);
   const [wallet, setWallet] = useState<TokenWallet | null>(null);
   const [transactions, setTransactions] = useState<TokenTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,13 +80,15 @@ export function DashboardPage() {
       { data: inquiriesData },
       { data: adsData },
       { data: citiesData },
+      { data: localitiesData },
       { data: walletData },
       { data: txData },
     ] = await Promise.all([
-      supabase.from('listings').select('*, city:cities(*)').eq('profile_id', user!.id),
+      supabase.from('listings').select('*, city:cities(*), locality:localities(*)').eq('profile_id', user!.id),
       supabase.from('inquiries').select('*, listing:listings(*)').eq('profile_id', user!.id).order('created_at', { ascending: false }),
       supabase.from('magazine_ads').select('*, magazine:magazines(*)').eq('profile_id', user!.id),
       supabase.from('cities').select('*').order('name'),
+      supabase.from('localities').select('*').eq('is_active', true).order('name'),
       supabase.from('token_wallets').select('*').eq('user_id', user!.id).maybeSingle(),
       supabase.from('token_transactions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
     ]);
@@ -102,6 +105,7 @@ export function DashboardPage() {
     }
     if (adsData) setMagazineAds(adsData as MagazineAd[]);
     if (citiesData) setCities(citiesData as City[]);
+    if (localitiesData) setLocalities(localitiesData as Locality[]);
     if (walletData) setWallet(walletData as TokenWallet);
     if (txData) setTransactions(txData as TokenTransaction[]);
     setLoading(false);
@@ -202,7 +206,7 @@ export function DashboardPage() {
           <div className="flex-1 min-w-0">
             {activeTab === 'overview'  && <OverviewTab stats={stats} listings={listings} inquiries={inquiries} wallet={wallet} />}
             {activeTab === 'wallet'    && <WalletTab wallet={wallet} transactions={transactions} tokenCosts={tokenCosts} onRefresh={fetchData} />}
-            {activeTab === 'listings'  && <ListingsTab listings={listings} cities={cities} loading={loading} walletBalance={wallet?.balance ?? 0} tokenCosts={tokenCosts} onRefresh={fetchData} />}
+            {activeTab === 'listings'  && <ListingsTab listings={listings} cities={cities} localities={localities} loading={loading} walletBalance={wallet?.balance ?? 0} tokenCosts={tokenCosts} onRefresh={fetchData} />}
             {activeTab === 'inquiries' && <InquiriesTab inquiries={inquiries} loading={loading} onRefresh={fetchData} />}
             {activeTab === 'magazine'  && <MagazineTab ads={magazineAds} loading={loading} />}
             {activeTab === 'settings'  && <SettingsTab profile={profile} user={user} wallet={wallet} tokenCosts={tokenCosts} onRefresh={fetchData} />}
@@ -392,17 +396,46 @@ function WalletTab({ wallet, transactions, tokenCosts, onRefresh }: { wallet: To
 
 // ─── Listings ─────────────────────────────────────────────────────────────────
 
-function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onRefresh }: {
-  listings: Listing[]; cities: City[]; loading: boolean; walletBalance: number; tokenCosts: TokenCosts; onRefresh: () => void;
+function ListingsTab({ listings, cities, localities, loading, walletBalance, tokenCosts, onRefresh }: {
+  listings: Listing[]; cities: City[]; localities: Locality[]; loading: boolean; walletBalance: number; tokenCosts: TokenCosts; onRefresh: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [tokenAction, setTokenAction] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<{ listingId: string; msg: string } | null>(null);
-  const emptyForm = { title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0, property_types: [] as string[], deal_types: [] as string[] };
+  const emptyForm = {
+    title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0,
+    property_types: [] as string[], deal_types: [] as string[],
+    locality_id: '', sector: '', brochure_url: '', photos: [] as string[],
+  };
       const [formData, setFormData] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [uploadingBrochure, setUploadingBrochure] = useState(false);
+    const localitiesForCity = localities.filter(l => l.city_id === formData.city_id);
+
+    async function handlePhotoUpload(file: File) {
+      setUploadingPhoto(true);
+      const path = `listings/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
+      if (!upErr) {
+        const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
+        setFormData(f => ({ ...f, photos: [...f.photos, pub.publicUrl] }));
+      }
+      setUploadingPhoto(false);
+    }
+
+    async function handleBrochureUpload(file: File) {
+      setUploadingBrochure(true);
+      const path = `brochures/${Date.now()}-${file.name}`;
+      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
+      if (!upErr) {
+        const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
+        setFormData(f => ({ ...f, brochure_url: pub.publicUrl }));
+      }
+      setUploadingBrochure(false);
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -423,6 +456,8 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
               location: cities.find(c => c.id === formData.city_id)?.name || '',
         profile_id: user.id,
         specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
+        locality_id: formData.locality_id || null,
+        brochure_url: formData.brochure_url || null,
       };
 
       const { error } = editingListing
@@ -507,11 +542,28 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-navy mb-1">City *</label>
-                  <select value={formData.city_id} onChange={(e) => setFormData({ ...formData, city_id: e.target.value })} required
+                  <select value={formData.city_id} onChange={(e) => setFormData({ ...formData, city_id: e.target.value, locality_id: '' })} required
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
                     <option value="">Select City</option>
                     {cities.map(city => (<option key={city.id} value={city.id}>{city.name}</option>))}
                   </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Locality</label>
+                    <select value={formData.locality_id} onChange={(e) => setFormData({ ...formData, locality_id: e.target.value })}
+                      disabled={!formData.city_id}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-400">
+                      <option value="">{formData.city_id ? 'Select Locality' : 'Select a city first'}</option>
+                      {localitiesForCity.map(loc => (<option key={loc.id} value={loc.id}>{loc.name}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Sector / Area</label>
+                    <input type="text" value={formData.sector} onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                      placeholder="e.g. Sector 23"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-navy mb-2">Property Types</label>
@@ -559,6 +611,59 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy mb-2">Photos</label>
+                  <div className="space-y-2">
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-gold/50 hover:bg-gold/5 transition-all">
+                      {uploadingPhoto ? <span className="text-sm text-warm-gray">Uploading…</span> : (
+                        <>
+                          <ImageIcon className="w-5 h-5 text-gray-400 mb-1" />
+                          <span className="text-sm text-warm-gray">Click to upload photos</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={async (e) => {
+                        const files = Array.from(e.target.files ?? []);
+                        for (const file of files) await handlePhotoUpload(file);
+                      }} />
+                    </label>
+                    {formData.photos.length > 0 && (
+                      <div className="flex gap-2 flex-wrap">
+                        {formData.photos.map((url, i) => (
+                          <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => setFormData(f => ({ ...f, photos: f.photos.filter((_, j) => j !== i) }))}
+                              className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center text-white">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-navy mb-2">Brochure (PDF)</label>
+                  {formData.brochure_url ? (
+                    <div className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm">
+                      <FileText className="w-4 h-4 text-gold flex-shrink-0" />
+                      <a href={formData.brochure_url} target="_blank" rel="noreferrer" className="text-navy underline truncate flex-1">View uploaded brochure</a>
+                      <button type="button" onClick={() => setFormData({ ...formData, brochure_url: '' })} className="text-warm-gray hover:text-red-600 flex-shrink-0"><X className="w-4 h-4" /></button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 w-full h-14 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-gold/50 hover:bg-gold/5 transition-all">
+                      {uploadingBrochure ? <span className="text-sm text-warm-gray">Uploading…</span> : (
+                        <>
+                          <Upload className="w-4 h-4 text-gray-400" />
+                          <span className="text-sm text-warm-gray">Click to upload brochure (PDF)</span>
+                        </>
+                      )}
+                      <input type="file" accept="application/pdf" className="hidden" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) await handleBrochureUpload(file);
+                      }} />
+                    </label>
+                  )}
+                </div>
                {saveError && (
   <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 text-sm rounded-xl">
     <X className="w-4 h-4 flex-shrink-0" />{saveError}
@@ -600,7 +705,7 @@ function ListingsTab({ listings, cities, loading, walletBalance, tokenCosts, onR
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => {
                     setEditingListing(listing);
-                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [] });
+                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [] });
                     setShowForm(true);
                   }} className="p-2 text-warm-gray hover:text-navy hover:bg-navy/5 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(listing.id)} className="p-2 text-warm-gray hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
