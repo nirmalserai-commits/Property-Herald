@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { City, Listing, Profile } from '../types/database';
-import { MapPin, Search, Filter, X, Calendar, Phone, Building2, Home, Briefcase, ChevronDown, Star, ArrowRight, Flag, ShieldAlert } from 'lucide-react';
+import { MapPin, Search, Filter, X, Calendar, Phone, Building2, Home, Briefcase, ChevronDown, Star, ArrowRight, Flag, ShieldAlert, FileText } from 'lucide-react';
 import { ShowApartmentBookingModal } from '../components/ShowApartmentBookingModal';
 import { ReportListingModal } from '../components/ReportListingModal';
 
@@ -306,8 +306,24 @@ function ListingCard({ listing, onBook, onReport }: { listing: ListingWithProfil
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden group flex flex-col">
-      {/* Color band */}
-      <div className="h-1.5 bg-gradient-to-r from-navy to-gold" />
+      {/* Cover photo, falls back to the color band when no photo exists */}
+      {listing.photos && listing.photos.length > 0 ? (
+        <div className="relative h-44 w-full overflow-hidden bg-gray-100">
+          <img
+            src={listing.photos[0]}
+            alt={listing.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+          {listing.photos.length > 1 && (
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-semibold">
+              +{listing.photos.length - 1} more
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="h-1.5 bg-gradient-to-r from-navy to-gold" />
+      )}
 
       <div className="p-5 flex flex-col flex-1 gap-3">
         {/* Badges */}
@@ -410,6 +426,17 @@ function ListingCard({ listing, onBook, onReport }: { listing: ListingWithProfil
             <ArrowRight className="w-3 h-3" />
           </button>
         </div>
+        {listing.brochure_url && (
+          <a
+            href={listing.brochure_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-gold/30 text-navy text-xs font-semibold hover:bg-gold/10 transition-all"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Download Brochure
+          </a>
+        )}
         <button
           onClick={onReport}
           className="mt-2 flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors"
