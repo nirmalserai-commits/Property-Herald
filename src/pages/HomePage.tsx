@@ -287,7 +287,7 @@ export function HomePage() {
           {/* 3. Two blocks flanking the logo — stacked on mobile, side by side on desktop */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-3xl mb-8">
             <Link
-              to="/directory"
+              to="/listings"
               className="group relative overflow-hidden rounded-2xl border-2 border-gold/30 bg-gradient-to-br from-navy to-navy-800 hover:border-gold/60 hover:shadow-2xl transition-all duration-300 p-6 flex items-center justify-center text-center"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 rounded-full -translate-y-1/3 translate-x-1/3 group-hover:bg-gold/10 transition-colors" />
