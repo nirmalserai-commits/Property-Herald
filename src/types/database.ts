@@ -1,4 +1,4 @@
-export type Persona = 'neena' | 'nora' | 'nita' | 'neetu' | 'naksha';
+export type Persona = 'neena' | 'nora' | 'nita' | 'neetu' | 'naksha' | 'noori';
 
 export type PublicAmbassadorType = 'developer' | 'agent' | 'community';
 
