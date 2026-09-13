@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, Users, Crown, Shield, Brain, MapPin, Check, X, ArrowLeft } from 'lucide-react';
+import { Send, Users, Crown, Shield, Brain, MapPin, Wrench, Check, X, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { Persona } from '../types/database';
 
 const PERSONA_ICONS: Record<Persona, typeof Crown> = {
-  neena: Crown, nora: Shield, nita: Brain, neetu: Shield, naksha: MapPin,
+  neena: Crown, nora: Shield, nita: Brain, neetu: Shield, naksha: MapPin, noori: Wrench,
 };
 
 const PERSONA_COLORS: Record<Persona, string> = {
@@ -15,9 +15,10 @@ const PERSONA_COLORS: Record<Persona, string> = {
   nita: 'text-blue-300 bg-blue-900/40 border-blue-800/40',
   neetu: 'text-emerald-300 bg-emerald-900/40 border-emerald-800/40',
   naksha: 'text-orange-300 bg-orange-900/40 border-orange-800/40',
+  noori: 'text-cyan-300 bg-cyan-900/40 border-cyan-800/40',
 };
 
-const AVAILABLE_PERSONAS: Persona[] = ['nora', 'nita', 'neetu', 'naksha'];
+const AVAILABLE_PERSONAS: Persona[] = ['nora', 'nita', 'neetu', 'naksha', 'noori'];
 
 interface ConferenceMessage {
   id: string;
