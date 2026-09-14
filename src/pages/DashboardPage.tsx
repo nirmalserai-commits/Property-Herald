@@ -127,6 +127,7 @@ export function DashboardPage() {
     { id: 'overview',  label: 'Overview',      icon: TrendingUp },
     { id: 'wallet',    label: 'Token Wallet',   icon: Coins,    badge: isLowBalance ? '!' : undefined },
     { id: 'listings',  label: 'My Listings',    icon: Building2 },
+    { id: 'sales-offer', label: 'Sales Offers', icon: Zap },
     { id: 'inquiries', label: 'Inquiries',      icon: MessageCircle, badge: stats.newInquiries > 0 ? String(stats.newInquiries) : undefined },
     { id: 'magazine',  label: 'Magazine Ads',   icon: BookOpen },
     { id: 'settings',  label: 'Settings',       icon: Settings },
@@ -207,6 +208,7 @@ export function DashboardPage() {
             {activeTab === 'overview'  && <OverviewTab stats={stats} listings={listings} inquiries={inquiries} wallet={wallet} />}
             {activeTab === 'wallet'    && <WalletTab wallet={wallet} transactions={transactions} tokenCosts={tokenCosts} onRefresh={fetchData} />}
             {activeTab === 'listings'  && <ListingsTab listings={listings} cities={cities} localities={localities} loading={loading} walletBalance={wallet?.balance ?? 0} tokenCosts={tokenCosts} onRefresh={fetchData} />}
+            {activeTab === 'sales-offer' && <SalesOfferTab listings={listings} walletBalance={wallet?.balance ?? 0} onRefresh={fetchData} />}
             {activeTab === 'inquiries' && <InquiriesTab inquiries={inquiries} loading={loading} onRefresh={fetchData} />}
             {activeTab === 'magazine'  && <MagazineTab ads={magazineAds} loading={loading} />}
             {activeTab === 'settings'  && <SettingsTab profile={profile} user={user} wallet={wallet} tokenCosts={tokenCosts} onRefresh={fetchData} />}
@@ -406,7 +408,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
   const emptyForm = {
     title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0,
     property_types: [] as string[], deal_types: [] as string[],
-    locality_id: '', sector: '', brochure_url: '', photos: [] as string[],
+    locality_id: '', sector: '', brochure_url: '', photos: [] as string[], furnishing_status: '' as string,
   };
       const [formData, setFormData] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
@@ -458,6 +460,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
         specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
         locality_id: formData.locality_id || null,
         brochure_url: formData.brochure_url || null,
+        furnishing_status: formData.furnishing_status || null,
       };
 
       const { error } = editingListing
@@ -549,7 +552,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                     {cities.map(city => (<option key={city.id} value={city.id}>{city.name}</option>))}
                   </select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-navy mb-1">Locality</label>
                     <select value={formData.locality_id} onChange={(e) => setFormData({ ...formData, locality_id: e.target.value })}
@@ -564,6 +567,16 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                     <input type="text" value={formData.sector} onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
                       placeholder="e.g. Sector 23"
                       className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Furnishing</label>
+                    <select value={formData.furnishing_status} onChange={(e) => setFormData({ ...formData, furnishing_status: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
+                      <option value="">Not specified</option>
+                      <option value="furnished">Furnished</option>
+                      <option value="semi-furnished">Semi-Furnished</option>
+                      <option value="unfurnished">Unfurnished</option>
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -706,7 +719,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => {
                     setEditingListing(listing);
-                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [] });
+                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [], furnishing_status: listing.furnishing_status || '' });
                     setShowForm(true);
                   }} className="p-2 text-warm-gray hover:text-navy hover:bg-navy/5 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(listing.id)} className="p-2 text-warm-gray hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -767,6 +780,169 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
       )}
     </div>
   );
+}
+
+// ─── Sales Offer Generator ───────────────────────────────────────────────────
+
+function SalesOfferTab({ listings, walletBalance, onRefresh }: { listings: Listing[]; walletBalance: number; onRefresh: () => void }) {
+  const { user } = useAuth();
+  const [selectedListing, setSelectedListing] = useState<string>('');
+  const [edition, setEdition] = useState<'short' | 'detailed' | 'ultra'>('short');
+  const [generating, setGenerating] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [offerCosts, setOfferCosts] = useState<Record<string, number>>({
+    sales_offer_short_tokens: 1, sales_offer_detailed_tokens: 2, sales_offer_ultra_tokens: 3,
+  });
+
+  useEffect(() => {
+    supabase.from('site_config')
+      .select('key, value')
+      .in('key', ['sales_offer_short_tokens', 'sales_offer_detailed_tokens', 'sales_offer_ultra_tokens'])
+      .then(({ data }) => {
+        if (data) {
+          const map = Object.fromEntries(data.map(r => [r.key, Number(r.value)]));
+          setOfferCosts(prev => ({ ...prev, ...map }));
+        }
+      });
+  }, []);
+
+  const editionCosts: Record<string, number> = {
+    short: offerCosts['sales_offer_short_tokens'] ?? 1,
+    detailed: offerCosts['sales_offer_detailed_tokens'] ?? 2,
+    ultra: offerCosts['sales_offer_ultra_tokens'] ?? 3,
+  };
+  const cost = editionCosts[edition];
+
+  async function handleGenerate() {
+    if (!user || !selectedListing) return;
+    setError(null);
+
+    if (walletBalance < cost) {
+      setError(`Insufficient tokens. ${edition} edition costs ${cost} tokens.`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `This will cost ${cost} token${cost > 1 ? 's' : ''} from your wallet.\n\nClick OK to proceed and generate your ${edition} sales offer.`
+    );
+    if (!confirmed) return;
+
+    setGenerating(true);
+    const { error: burnErr } = await supabase.rpc('burn_tokens', { p_user_id: user.id, p_amount: cost, p_reason: `Sales Offer ${edition}` });
+    if (burnErr) {
+      setError('Failed to deduct tokens.');
+      setGenerating(false);
+      return;
+    }
+
+    const listing = listings.find(l => l.id === selectedListing);
+    if (listing) {
+      const offer = generateOfferText(listing, edition);
+      setResult(offer);
+      await supabase.from('leads').insert({
+        name: 'Sales Offer Generation',
+        phone: '-',
+        message: `Generated ${edition} sales offer for: ${listing.title}`,
+        source: 'sales_offer_generator',
+        owner_id: user.id,
+      }).catch(() => {});
+    }
+    setGenerating(false);
+    onRefresh();
+  }
+
+  const approvedListings = listings.filter(l => l.moderation_status === 'approved');
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <h3 className="font-serif font-bold text-navy text-lg">Sales Offer Generator</h3>
+        <p className="text-sm text-warm-gray">Generate instant pitch documents for your listings. Token cost: Short ({editionCosts.short}) · Detailed ({editionCosts.detailed}) · Ultra Detailed ({editionCosts.ultra}, includes Naksha Report).</p>
+
+        {approvedListings.length === 0 ? (
+          <div className="text-sm text-warm-gray bg-gray-50 rounded-xl p-4">You need at least one approved listing before generating a sales offer.</div>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-navy mb-1.5">Select Listing</label>
+              <select value={selectedListing} onChange={e => setSelectedListing(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
+                <option value="">Choose a listing...</option>
+                {approvedListings.map(l => (
+                  <option key={l.id} value={l.id}>{l.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy mb-1.5">Edition</label>
+              <div className="grid grid-cols-3 gap-3">
+                {(['short', 'detailed', 'ultra'] as const).map(ed => (
+                  <button key={ed} type="button" onClick={() => setEdition(ed)}
+                    className={`p-4 rounded-xl border-2 transition-all text-left ${edition === ed ? 'border-navy bg-navy/5' : 'border-gray-200 hover:border-gray-300'}`}>
+                    <p className="font-semibold text-navy text-sm capitalize">{ed === 'ultra' ? 'Ultra Detailed' : ed}</p>
+                    <p className="text-xs text-gold mt-0.5">{editionCosts[ed]} token{editionCosts[ed] > 1 ? 's' : ''}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{error}</div>}
+
+            <button onClick={handleGenerate} disabled={generating || !selectedListing}
+              className="px-6 py-2.5 bg-gold text-navy rounded-xl text-sm font-bold hover:bg-gold-400 disabled:opacity-50 transition-colors flex items-center gap-2">
+              {generating ? <span className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" /> : <Zap className="w-4 h-4" />}
+              Generate Offer ({cost} tokens)
+            </button>
+          </>
+        )}
+      </div>
+
+      {result && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif font-bold text-navy text-lg">Generated Offer</h3>
+            <button onClick={() => { navigator.clipboard.writeText(result); }} className="text-xs text-gold hover:underline">Copy to clipboard</button>
+          </div>
+          <div className="prose prose-sm max-w-none text-warm-gray whitespace-pre-wrap">{result}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function generateOfferText(listing: Listing, edition: 'short' | 'detailed' | 'ultra'): string {
+  const price = listing.price ? `₹${listing.price.toLocaleString('en-IN')}` : 'Price on request';
+  const view = listing.property_view ? ` | View: ${listing.property_view}` : '';
+  const location = listing.city?.name ?? listing.emirate ?? 'Prime location';
+  const furnishing = listing.furnishing_status
+    ? listing.furnishing_status.charAt(0).toUpperCase() + listing.furnishing_status.slice(1).replace('-', ' ')
+    : null;
+
+  let text = `PROPERTY PITCH — ${listing.title}\n`;
+  text += `${location}${view} | ${price}\n\n`;
+  text += `${listing.description ?? ''}\n\n`;
+
+  if (edition !== 'short') {
+    text += `DETAILED FEATURES:\n`;
+    text += `- Property Type: ${listing.property_types?.join(', ') ?? 'Residential'}\n`;
+    text += `- View: ${listing.property_view ?? 'Standard'}\n`;
+    if (furnishing) text += `- Furnishing: ${furnishing}\n`;
+    text += `\n`;
+  }
+
+  if (edition === 'ultra') {
+    text += `NAKSHA REPORT (included):\n`;
+    text += `Full area intelligence report with locality data, connectivity, and infrastructure analysis.\n`;
+    text += `\n`;
+  }
+
+  text += `CONTACT:\n`;
+  text += `Phone: ${listing.contact_phone ?? 'Available on request'}\n`;
+  text += `\nGenerated by Property Herald — India's AI-powered property platform.`;
+
+  return text;
 }
 
 // ─── Inquiries ───────────────────────────────────────────────────────────────
