@@ -129,6 +129,7 @@ export interface Listing {
   locality_id?: string | null;
   sector?: string | null;
   brochure_url?: string | null;
+  furnishing_status?: 'furnished' | 'semi-furnished' | 'unfurnished' | null;
   created_at: string;
   updated_at: string;
   profile?: Profile;
