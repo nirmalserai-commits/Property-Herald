@@ -405,10 +405,13 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [tokenAction, setTokenAction] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<{ listingId: string; msg: string } | null>(null);
+  const EMIRATES = ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah', 'Fujairah', 'Umm Al Quwain'];
   const emptyForm = {
     title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0,
     property_types: [] as string[], deal_types: [] as string[],
     locality_id: '', sector: '', brochure_url: '', photos: [] as string[], furnishing_status: '' as string,
+    market_track: 'india' as 'india' | 'dubai', emirate: '', contact_phone: '',
+    is_off_plan: false, escrow_account_status: '', escrow_account_number: '', rera_qr_code: '',
   };
       const [formData, setFormData] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
@@ -451,16 +454,41 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
         return;
       }
 
-      const { title, ...rest } = formData;
+      const isDubai = formData.market_track === 'dubai';
+      if (isDubai && !formData.emirate) {
+        setSaveError('Please select an Emirate for a Dubai listing.');
+        setSaving(false);
+        return;
+      }
+      if (isDubai && formData.is_off_plan && (!formData.escrow_account_status || !formData.escrow_account_number)) {
+        setSaveError('Escrow account status and number are required for off-plan Dubai properties.');
+        setSaving(false);
+        return;
+      }
+      if (isDubai && formData.emirate === 'Dubai' && !formData.rera_qr_code) {
+        setSaveError('RERA QR code is required for listings in the Dubai emirate.');
+        setSaving(false);
+        return;
+      }
+
+      const { title, market_track, is_off_plan, ...rest } = formData;
       const data = {
         ...rest,
         project_name: title,
-              location: cities.find(c => c.id === formData.city_id)?.name || '',
+              location: isDubai ? (formData.emirate || '') : (cities.find(c => c.id === formData.city_id)?.name || ''),
         profile_id: user.id,
         specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
         locality_id: formData.locality_id || null,
         brochure_url: formData.brochure_url || null,
         furnishing_status: formData.furnishing_status || null,
+        city_id: isDubai ? null : (formData.city_id || null),
+        market_track,
+        is_dubai: isDubai,
+        emirate: isDubai ? formData.emirate : null,
+        contact_phone: formData.contact_phone || null,
+        escrow_account_status: (isDubai && is_off_plan) ? formData.escrow_account_status : null,
+        escrow_account_number: (isDubai && is_off_plan) ? formData.escrow_account_number : null,
+        rera_qr_code: (isDubai && formData.emirate === 'Dubai') ? formData.rera_qr_code : null,
       };
 
       const { error } = editingListing
@@ -545,6 +573,28 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none" />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-navy mb-2">Market</label>
+                  <div className="flex gap-3">
+                    {(['india', 'dubai'] as const).map((mt) => (
+                      <button key={mt} type="button"
+                        onClick={() => setFormData({ ...formData, market_track: mt })}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${formData.market_track === mt ? 'bg-navy text-cream' : 'bg-gray-100 text-warm-gray hover:bg-gray-200'}`}>
+                        {mt === 'india' ? 'India' : 'Dubai'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {formData.market_track === 'dubai' ? (
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Emirate *</label>
+                    <select value={formData.emirate} onChange={(e) => setFormData({ ...formData, emirate: e.target.value })} required
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
+                      <option value="">Select emirate</option>
+                      {EMIRATES.map(em => (<option key={em} value={em}>{em}</option>))}
+                    </select>
+                  </div>
+                ) : (
+                <div>
                   <label className="block text-sm font-medium text-navy mb-1">City *</label>
                   <select value={formData.city_id} onChange={(e) => setFormData({ ...formData, city_id: e.target.value, locality_id: '' })} required
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
@@ -552,6 +602,44 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                     {cities.map(city => (<option key={city.id} value={city.id}>{city.name}</option>))}
                   </select>
                 </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-navy mb-1">Contact Phone</label>
+                  <input type="text" value={formData.contact_phone} onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    placeholder="Phone number for enquiries"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                </div>
+                {formData.market_track === 'dubai' && (
+                  <div className="space-y-4 p-4 bg-gold/5 rounded-xl border border-gold/20">
+                    <label className="flex items-center gap-2 text-sm font-medium text-navy">
+                      <input type="checkbox" checked={formData.is_off_plan} onChange={(e) => setFormData({ ...formData, is_off_plan: e.target.checked })} />
+                      Off-plan property
+                    </label>
+                    {formData.is_off_plan && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-navy mb-1">Escrow Account Status *</label>
+                          <input type="text" value={formData.escrow_account_status} onChange={(e) => setFormData({ ...formData, escrow_account_status: e.target.value })}
+                            placeholder="e.g. Active"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-navy mb-1">Escrow Account Number *</label>
+                          <input type="text" value={formData.escrow_account_number} onChange={(e) => setFormData({ ...formData, escrow_account_number: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                        </div>
+                      </div>
+                    )}
+                    {formData.emirate === 'Dubai' && (
+                      <div>
+                        <label className="block text-sm font-medium text-navy mb-1">RERA QR Code *</label>
+                        <input type="text" value={formData.rera_qr_code} onChange={(e) => setFormData({ ...formData, rera_qr_code: e.target.value })}
+                          placeholder="QR code reference / URL"
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-navy mb-1">Locality</label>
@@ -719,7 +807,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => {
                     setEditingListing(listing);
-                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [], furnishing_status: listing.furnishing_status || '' });
+                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [], furnishing_status: listing.furnishing_status || '', market_track: (listing as any).is_dubai ? 'dubai' : 'india', emirate: (listing as any).emirate || '', contact_phone: (listing as any).contact_phone || '', is_off_plan: !!((listing as any).escrow_account_status || (listing as any).escrow_account_number), escrow_account_status: (listing as any).escrow_account_status || '', escrow_account_number: (listing as any).escrow_account_number || '', rera_qr_code: (listing as any).rera_qr_code || '' });
                     setShowForm(true);
                   }} className="p-2 text-warm-gray hover:text-navy hover:bg-navy/5 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(listing.id)} className="p-2 text-warm-gray hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
