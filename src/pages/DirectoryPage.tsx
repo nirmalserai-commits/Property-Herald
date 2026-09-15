@@ -184,6 +184,21 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-lg transition-all border border-gold/10 overflow-hidden">
+      {listing.photos && listing.photos.length > 0 && (
+        <div className="relative h-44 w-full overflow-hidden bg-gray-100">
+          <img
+            src={listing.photos[0]}
+            alt={profile?.business_name ?? listing.title ?? 'Listing photo'}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          {listing.photos.length > 1 && (
+            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[10px] font-semibold">
+              +{listing.photos.length - 1} more
+            </span>
+          )}
+        </div>
+      )}
       <div className="p-6">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 bg-gold/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-gold/20">
@@ -237,6 +252,17 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
         </div>
 
         <p className="text-warm-gray text-sm mb-4 line-clamp-2">{listing.description || profile?.description || 'Professional real estate services'}</p>
+
+        {listing.brochure_url && (
+          <a
+            href={listing.brochure_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 mb-4 rounded-lg border border-gold/30 text-navy text-xs font-semibold hover:bg-gold/10 transition-all"
+          >
+            Download Brochure
+          </a>
+        )}
 
         <div className="flex items-center gap-4 mb-4 text-sm text-warm-gray">
           {listing.rating > 0 && (
