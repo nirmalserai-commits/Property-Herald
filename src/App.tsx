@@ -39,7 +39,6 @@ import { AdminNitaChat } from './pages/admin/AdminNitaChat';
 import { BuyerRegisterPage } from './pages/BuyerRegisterPage';
 import { ListingsPage } from './pages/ListingsPage';
 import { PricingPage } from './pages/PricingPage';
-import { SubmitListingPage } from './pages/SubmitListingPage';
 import { HomeLoansPage } from './pages/HomeLoansPage';
 import { BoardroomPage } from './pages/BoardroomPage';
 import { BoardroomConferencePage } from './pages/BoardroomConferencePage';
@@ -52,7 +51,6 @@ import { HallOfFamePage } from './pages/HallOfFamePage';
 import { TermsPage } from './pages/TermsPage';
 import { FoundingPartnerPage, FoundingAgencyPage } from './pages/FoundingPages';
 import { DubaiPage } from './pages/DubaiPage';
-import { DeveloperDashboardPage } from './pages/DeveloperDashboardPage';
 import { AdminHallOfFame } from './pages/admin/AdminHallOfFame';
 import { AdminAssets } from './pages/admin/AdminAssets';
 import { AdminLocations } from './pages/admin/AdminLocations';
@@ -116,8 +114,6 @@ function AppRoutes() {
       <Route path="/register/buyer" element={<BuyerRegisterPage />} />
       <Route path="/listings" element={<Layout><ListingsPage /></Layout>} />
       <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/developer-dashboard" element={<DeveloperDashboardPage />} />
-      <Route path="/developer/dashboard" element={<DeveloperDashboardPage />} />
       <Route path="/tokens" element={<TokenPurchasePage />} />
       <Route path="/invoice/:id" element={<InvoicePage />} />
       <Route path="/" element={<Layout><HomePage /></Layout>} />
@@ -135,7 +131,6 @@ function AppRoutes() {
       <Route path="/partners" element={<PartnersPage />} />
       <Route path="/live-events" element={<LiveEventsPage />} />
       <Route path="/pricing" element={<PricingPage />} />
-      <Route path="/submit-listing" element={<SubmitListingPage />} />
       <Route path="/home-loans" element={<HomeLoansPage />} />
       <Route path="/ambassadors" element={<AmbassadorsPage />} />
       <Route path="/dubai" element={<Layout><DubaiPage /></Layout>} />
