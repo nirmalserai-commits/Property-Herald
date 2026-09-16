@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Building2, ShieldCheck, Coins,
   TrendingUp, Bell, LogOut, ArrowLeft, Shield, Bot, Image, Landmark,
   Video, Handshake, Brain, Lock, Mail, Award, MapPin, FolderOpen, UserCheck,
-  Users as UsersIcon, Tag, Package, Gift,
+  Users as UsersIcon, Tag, Package, Gift, Wrench,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
@@ -40,6 +40,7 @@ const NAV = [
   { to: '/admin/digest-log', label: 'Digest Log', icon: Mail, exact: false },
   { to: '/admin/nora', label: 'Nora (COO)', icon: Shield, exact: false },
   { to: '/admin/nita', label: 'Nita (CoS)', icon: Brain, exact: false },
+  { to: '/admin/noori', label: 'Noori (Site Eng)', icon: Wrench, exact: false },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
