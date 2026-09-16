@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type Daughter = 'nora' | 'nita';
+export type Daughter = 'nora' | 'nita' | 'noori';
 export type ChatRole = 'user' | 'assistant';
 
 export interface StoredMessage {
