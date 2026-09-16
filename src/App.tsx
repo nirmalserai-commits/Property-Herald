@@ -36,6 +36,7 @@ import { AdminBoardroom } from './pages/admin/AdminBoardroom';
 import { AdminDigestLog } from './pages/admin/AdminDigestLog';
 import { AdminNoraChat } from './pages/admin/AdminNoraChat';
 import { AdminNitaChat } from './pages/admin/AdminNitaChat';
+import { AdminNooriChat } from './pages/admin/AdminNooriChat';
 import { BuyerRegisterPage } from './pages/BuyerRegisterPage';
 import { ListingsPage } from './pages/ListingsPage';
 import { PricingPage } from './pages/PricingPage';
@@ -170,6 +171,7 @@ function AppRoutes() {
       <Route path="/admin/boardroom" element={<AdminBoardroom />} />
       <Route path="/admin/nora" element={<AdminNoraChat />} />
       <Route path="/admin/nita" element={<AdminNitaChat />} />
+      <Route path="/admin/noori" element={<AdminNooriChat />} />
       <Route path="/admin/digest-log" element={<AdminDigestLog />} />
       <Route path="/admin/crm" element={<AdminCrm />} />
       <Route path="/admin/deals" element={<AdminDeals />} />
