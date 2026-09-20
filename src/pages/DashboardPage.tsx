@@ -417,6 +417,8 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
     const [saveError, setSaveError] = useState<string | null>(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [uploadingBrochure, setUploadingBrochure] = useState(false);
+    const [generatingDesc, setGeneratingDesc] = useState(false);
+    const [descError, setDescError] = useState<string | null>(null);
     const localitiesForCity = localities.filter(l => l.city_id === formData.city_id);
 
     async function handlePhotoUpload(file: File) {
@@ -440,6 +442,38 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
       }
       setUploadingBrochure(false);
     }
+
+    const handleGenerateDescription = async () => {
+      const selectedCity = cities.find(c => c.id === formData.city_id);
+      if (!formData.title || !selectedCity) {
+        setDescError('Add a project title and select a city first.');
+        return;
+      }
+      setGeneratingDesc(true);
+      setDescError(null);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-listing-description', {
+          body: {
+            title: formData.title,
+            city: selectedCity.name,
+            sector: formData.sector || undefined,
+            property_types: formData.property_types,
+            deal_types: formData.deal_types,
+            furnishing_status: formData.furnishing_status || undefined,
+            market_track: formData.market_track,
+          },
+        });
+        if (error || !data?.description) {
+          setDescError(data?.error || 'Could not generate a description. Please try again.');
+        } else {
+          setFormData(f => ({ ...f, description: data.description }));
+        }
+      } catch {
+        setDescError('Could not reach the AI service. Please try again.');
+      } finally {
+        setGeneratingDesc(false);
+      }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -693,9 +727,17 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-navy mb-1">Description</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-navy">Description</label>
+                    <button type="button" onClick={handleGenerateDescription} disabled={generatingDesc}
+                      className="text-xs font-semibold text-gold hover:text-gold/80 disabled:opacity-50 disabled:cursor-not-allowed">
+                      {generatingDesc ? 'Writing…' : '✨ Generate with AI'}
+                    </button>
+                  </div>
                   <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  {descError && <p className="text-xs text-red-600 mt-1">{descError}</p>}
+                  <p className="text-xs text-warm-gray mt-1">AI writes a draft from the details above — review before publishing.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-navy mb-1">Specialties (comma-separated)</label>
