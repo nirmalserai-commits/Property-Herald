@@ -17,6 +17,7 @@ import { AdminTokenSettings } from './pages/admin/AdminTokenSettings';
 import { AdminVerifications } from './pages/admin/AdminVerifications';
 import { AdminAnalytics } from './pages/admin/AdminAnalytics';
 import { AdminBroadcast } from './pages/admin/AdminBroadcast';
+import { AdminSocialPosts } from './pages/admin/AdminSocialPosts';
 import { AdminAmbassadors } from './pages/admin/AdminAmbassadors';
 import { AdminBanners } from './pages/admin/AdminBanners';
 import { AdminSbiAds } from './pages/admin/AdminSbiAds';
@@ -162,6 +163,7 @@ function AppRoutes() {
       <Route path="/admin/assets" element={<AdminAssets />} />
       <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route path="/admin/broadcast" element={<AdminBroadcast />} />
+      <Route path="/admin/social-posts" element={<AdminSocialPosts />} />
       <Route path="/admin/ambassadors" element={<AdminAmbassadors />} />
       <Route path="/admin/public-ambassadors" element={<AdminPublicAmbassadors />} />
       <Route path="/admin/banners" element={<AdminBanners />} />
