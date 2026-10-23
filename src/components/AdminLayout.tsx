@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Building2, ShieldCheck, Coins,
   TrendingUp, Bell, LogOut, ArrowLeft, Shield, Bot, Image, Landmark,
   Video, Handshake, Brain, Lock, Mail, Award, MapPin, FolderOpen, UserCheck,
-  Users as UsersIcon, Tag, Package, Gift, Wrench,
+  Users as UsersIcon, Tag, Package, Gift, Wrench, Share2,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
@@ -30,6 +30,7 @@ const NAV = [
   { to: '/admin/goodwill-tokens', label: 'Goodwill Credits', icon: Gift, exact: false },
   { to: '/admin/analytics', label: 'Analytics', icon: TrendingUp, exact: false },
   { to: '/admin/broadcast', label: 'Broadcast', icon: Bell, exact: false },
+  { to: '/admin/social-posts', label: 'Social Posts', icon: Share2, exact: false },
   { to: '/admin/ambassadors', label: 'AI Ambassadors', icon: Bot, exact: false },
   { to: '/admin/public-ambassadors', label: 'PH Ambassadors', icon: Award, exact: false },
   { to: '/admin/banners', label: 'Banners', icon: Image, exact: false },
