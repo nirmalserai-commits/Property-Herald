@@ -94,7 +94,17 @@ export function RegisterPage() {
     setLoading(true);
     setError('');
 
-    const { error: signUpError } = await signUp(formData.email, formData.password);
+    const { error: signUpError } = await signUp(formData.email, formData.password, {
+      business_name: formData.business_name,
+      business_type: formData.business_type,
+      contact_person: formData.contact_person,
+      phone: formData.phone,
+      whatsapp_number: formData.whatsapp_number,
+      city_id: formData.city_id,
+      description: formData.description,
+      website_url: formData.website_url,
+      market_track: formData.market_track,
+    });
     if (signUpError) { setError(signUpError.message || 'Registration failed.'); setLoading(false); return; }
 
     let newUser = null;
