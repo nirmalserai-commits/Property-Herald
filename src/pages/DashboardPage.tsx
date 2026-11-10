@@ -207,7 +207,7 @@ export function DashboardPage() {
           <div className="flex-1 min-w-0">
             {activeTab === 'overview'  && <OverviewTab stats={stats} listings={listings} inquiries={inquiries} wallet={wallet} />}
             {activeTab === 'wallet'    && <WalletTab wallet={wallet} transactions={transactions} tokenCosts={tokenCosts} onRefresh={fetchData} />}
-            {activeTab === 'listings'  && <ListingsTab listings={listings} cities={cities} localities={localities} loading={loading} walletBalance={wallet?.balance ?? 0} tokenCosts={tokenCosts} onRefresh={fetchData} />}
+            {activeTab === 'listings'  && <ListingsTab allowedTracks={(user?.email === 'nirmalserai@gmail.com' || !profile?.market_track) ? ['india', 'dubai'] : [profile.market_track as 'india' | 'dubai']} listings={listings} cities={cities} localities={localities} loading={loading} walletBalance={wallet?.balance ?? 0} tokenCosts={tokenCosts} onRefresh={fetchData} />}
             {activeTab === 'sales-offer' && <SalesOfferTab listings={listings} walletBalance={wallet?.balance ?? 0} onRefresh={fetchData} />}
             {activeTab === 'inquiries' && <InquiriesTab inquiries={inquiries} loading={loading} onRefresh={fetchData} />}
             {activeTab === 'magazine'  && <MagazineTab ads={magazineAds} loading={loading} />}
@@ -398,18 +398,45 @@ function WalletTab({ wallet, transactions, tokenCosts, onRefresh }: { wallet: To
 
 // ─── Listings ─────────────────────────────────────────────────────────────────
 
-function ListingsTab({ listings, cities, localities, loading, walletBalance, tokenCosts, onRefresh }: {
-  listings: Listing[]; cities: City[]; localities: Locality[]; loading: boolean; walletBalance: number; tokenCosts: TokenCosts; onRefresh: () => void;
+type PhoneResult = { ok: true; value: string } | { ok: false; error: string };
+
+// India: exactly 10 digits, first digit 6-9 (accepts +91 / 91 / 0 prefix, spaces, dashes).
+// UAE: mobile 5X XXX XXXX or landline (accepts +971 / 971 / 0 prefix).
+function validateListingPhone(raw: string, track: 'india' | 'dubai'): PhoneResult {
+  const input = (raw || '').trim();
+  if (!input) return { ok: true, value: '' };
+  if (/[^\d+\s\-()]/.test(input)) return { ok: false, error: 'Phone number can contain only digits, spaces and an optional + prefix.' };
+  let d = input.replace(/\D/g, '');
+  if (track === 'india') {
+    if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+    else if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+    if (d.length !== 10) return { ok: false, error: 'Enter a 10-digit Indian mobile number (without extra digits).' };
+    if (!/^[6-9]/.test(d)) return { ok: false, error: 'Indian mobile numbers start with 6, 7, 8 or 9.' };
+    if (/^(\d)\1{9}$/.test(d)) return { ok: false, error: 'Please enter a real phone number.' };
+    return { ok: true, value: '+91' + d };
+  }
+  if (d.startsWith('971')) d = d.slice(3);
+  else if (d.startsWith('0')) d = d.slice(1);
+  if (/^5\d{8}$/.test(d) || /^[2-4679]\d{7}$/.test(d)) return { ok: true, value: '+971' + d };
+  return { ok: false, error: 'Enter a valid UAE number, e.g. +971 50 123 4567.' };
+}
+
+function ListingsTab({ allowedTracks, listings, cities, localities, loading, walletBalance, tokenCosts, onRefresh }: {
+  allowedTracks: ('india' | 'dubai')[]; listings: Listing[]; cities: City[]; localities: Locality[]; loading: boolean; walletBalance: number; tokenCosts: TokenCosts; onRefresh: () => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [tokenAction, setTokenAction] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState<{ listingId: string; msg: string } | null>(null);
+  // City/locality ids are integers in the database but <select> values are strings,
+  // so always compare as strings.
+  const sameId = (a: unknown, b: unknown) => a != null && b != null && a !== '' && b !== '' && String(a) === String(b);
+  const defaultTrack: 'india' | 'dubai' = allowedTracks[0] ?? 'india';
   const emptyForm = {
     title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0,
     property_types: [] as string[], deal_types: [] as string[],
     locality_id: '', sector: '', brochure_url: '', photos: [] as string[], furnishing_status: '' as string,
-    market_track: 'india' as 'india' | 'dubai', contact_phone: '',
+    market_track: defaultTrack, contact_phone: '',
     is_off_plan: false, escrow_account_status: '', escrow_account_number: '', rera_qr_code: '',
   };
       const [formData, setFormData] = useState(emptyForm);
@@ -419,7 +446,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
     const [uploadingBrochure, setUploadingBrochure] = useState(false);
     const [generatingDesc, setGeneratingDesc] = useState(false);
     const [descError, setDescError] = useState<string | null>(null);
-    const localitiesForCity = localities.filter(l => l.city_id === formData.city_id);
+    const localitiesForCity = localities.filter(l => sameId(l.city_id, formData.city_id));
 
     async function handlePhotoUpload(file: File) {
       setUploadingPhoto(true);
@@ -444,7 +471,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
     }
 
     const handleGenerateDescription = async () => {
-      const selectedCity = cities.find(c => c.id === formData.city_id);
+      const selectedCity = cities.find(c => sameId(c.id, formData.city_id));
       if (!formData.title || !selectedCity) {
         setDescError('Add a project title and select a city first.');
         return;
@@ -488,12 +515,30 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
       }
 
       const isDubai = formData.market_track === 'dubai';
+      if (!allowedTracks.includes(formData.market_track)) {
+        setSaveError('Your account is registered for a different market. You cannot publish in this market.');
+        setSaving(false);
+        return;
+      }
+      const phoneCheck = validateListingPhone(formData.contact_phone, formData.market_track);
+      if (!phoneCheck.ok) {
+        setSaveError(phoneCheck.error);
+        setSaving(false);
+        return;
+      }
+      const cleanPhone = phoneCheck.ok ? phoneCheck.value : '';
+      const cityForTrack = cities.find(c => sameId(c.id, formData.city_id));
+      if (cityForTrack && ((cityForTrack.state === 'UAE') !== isDubai)) {
+        setSaveError(isDubai ? 'Please select a UAE emirate for a Dubai listing.' : 'Please select an Indian city for an India listing.');
+        setSaving(false);
+        return;
+      }
       if (isDubai && !formData.city_id) {
         setSaveError('Please select an Emirate for a Dubai listing.');
         setSaving(false);
         return;
       }
-      const selectedCity = cities.find(c => c.id === formData.city_id);
+      const selectedCity = cities.find(c => sameId(c.id, formData.city_id));
       const emirateName = isDubai ? (selectedCity?.name || '') : '';
       if (isDubai && formData.is_off_plan && (!formData.escrow_account_status || !formData.escrow_account_number)) {
         setSaveError('Escrow account status and number are required for off-plan Dubai properties.');
@@ -520,7 +565,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
         market_track,
         is_dubai: isDubai,
         emirate: isDubai ? emirateName : null,
-        contact_phone: formData.contact_phone || null,
+        contact_phone: cleanPhone || null,
         escrow_account_status: (isDubai && is_off_plan) ? formData.escrow_account_status : null,
         escrow_account_number: (isDubai && is_off_plan) ? formData.escrow_account_number : null,
         rera_qr_code: (isDubai && emirateName === 'Dubai') ? formData.rera_qr_code : null,
@@ -610,9 +655,9 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                 <div>
                   <label className="block text-sm font-medium text-navy mb-2">Market</label>
                   <div className="flex gap-3">
-                    {(['india', 'dubai'] as const).map((mt) => (
+                    {(['india', 'dubai'] as const).filter(mt => allowedTracks.includes(mt)).map((mt) => (
                       <button key={mt} type="button"
-                        onClick={() => setFormData({ ...formData, market_track: mt })}
+                        onClick={() => setFormData({ ...formData, market_track: mt, city_id: '', locality_id: '' })}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${formData.market_track === mt ? 'bg-navy text-cream' : 'bg-gray-100 text-warm-gray hover:bg-gray-200'}`}>
                         {mt === 'india' ? 'India' : 'Dubai'}
                       </button>
@@ -634,15 +679,19 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                   <select value={formData.city_id} onChange={(e) => setFormData({ ...formData, city_id: e.target.value, locality_id: '' })} required
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none bg-white">
                     <option value="">Select City</option>
-                    {cities.map(city => (<option key={city.id} value={city.id}>{city.name}</option>))}
+                    {cities.filter(c => c.state !== 'UAE' && c.market_track !== 'dubai').map(city => (<option key={city.id} value={city.id}>{city.name}</option>))}
                   </select>
                 </div>
                 )}
                 <div>
                   <label className="block text-sm font-medium text-navy mb-1">Contact Phone</label>
-                  <input type="text" value={formData.contact_phone} onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                    placeholder="Phone number for enquiries"
+                  <input type="tel" inputMode="tel" maxLength={16} value={formData.contact_phone}
+                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value.replace(/[^\d+\s\-]/g, '') })}
+                    placeholder={formData.market_track === 'dubai' ? '+971 50 123 4567' : '10-digit mobile, e.g. 9876543210'}
                     className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  {formData.contact_phone && !validateListingPhone(formData.contact_phone, formData.market_track).ok && (
+                    <p className="text-xs text-red-600 mt-1">{(validateListingPhone(formData.contact_phone, formData.market_track) as { ok: false; error: string }).error}</p>
+                  )}
                 </div>
                 {formData.market_track === 'dubai' && (
                   <div className="space-y-4 p-4 bg-gold/5 rounded-xl border border-gold/20">
@@ -665,7 +714,7 @@ function ListingsTab({ listings, cities, localities, loading, walletBalance, tok
                         </div>
                       </div>
                     )}
-                    {cities.find(c => c.id === formData.city_id)?.name === 'Dubai' && (
+                    {cities.find(c => sameId(c.id, formData.city_id))?.name === 'Dubai' && (
                       <div>
                         <label className="block text-sm font-medium text-navy mb-1">RERA QR Code *</label>
                         <input type="text" value={formData.rera_qr_code} onChange={(e) => setFormData({ ...formData, rera_qr_code: e.target.value })}
