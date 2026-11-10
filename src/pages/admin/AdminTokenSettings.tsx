@@ -7,6 +7,7 @@ import { Save, AlertTriangle, Check, Edit3 } from 'lucide-react';
 
 interface EditableConfig {
   token_rate_inr: string;
+  listing_publish_tokens: string;
   verified_badge_cost: string;
   featured_listing_cost: string;
   hot_property_cost: string;
@@ -25,7 +26,7 @@ interface EditableConfig {
 
 export function AdminTokenSettings() {
   const { user } = useAuth();
-  const [config, setConfig] = useState<EditableConfig>({ token_rate_inr: '', verified_badge_cost: '', featured_listing_cost: '', hot_property_cost: '', whatsapp_lead_cost: '', show_platform_stats: 'false', total_visitor_count: '0', total_sales_offers_generated: '0', sales_offer_short_tokens: '1', sales_offer_detailed_tokens: '2', sales_offer_ultra_tokens: '3', vam_full_bundle_tokens: '10', vam_naksha_tokens: '1', vam_meeting_fixing_tokens: '5', vam_sequence_tokens: '10' });
+  const [config, setConfig] = useState<EditableConfig>({ token_rate_inr: '', listing_publish_tokens: '2', verified_badge_cost: '', featured_listing_cost: '', hot_property_cost: '', whatsapp_lead_cost: '', show_platform_stats: 'false', total_visitor_count: '0', total_sales_offers_generated: '0', sales_offer_short_tokens: '1', sales_offer_detailed_tokens: '2', sales_offer_ultra_tokens: '3', vam_full_bundle_tokens: '10', vam_naksha_tokens: '1', vam_meeting_fixing_tokens: '5', vam_sequence_tokens: '10' });
   const [bundles, setBundles] = useState<TokenBundle[]>([]);
   const [editedBundles, setEditedBundles] = useState<Record<string, { price_inr: string; base_tokens: string; bonus_tokens: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,7 @@ export function AdminTokenSettings() {
       const map = Object.fromEntries((cfgData as SiteConfig[]).map(c => [c.key, c.value]));
       setConfig({
         token_rate_inr: map.token_rate_inr ?? '20',
+        listing_publish_tokens: map.listing_publish_tokens ?? '2',
         verified_badge_cost: map.verified_badge_cost ?? '5',
         featured_listing_cost: map.featured_listing_cost ?? '10',
         hot_property_cost: map.hot_property_cost ?? '15',
@@ -100,6 +102,7 @@ export function AdminTokenSettings() {
 
   const configFields = [
     { key: 'token_rate_inr' as const, label: 'Token Rate', unit: '₹ per token', desc: 'Base price of 1 token in INR' },
+    { key: 'listing_publish_tokens' as const, label: 'Listing Publish', unit: 'tokens / listing', desc: 'Charged once when a listing is approved and goes live (0 = free)' },
     { key: 'verified_badge_cost' as const, label: 'Verified Badge', unit: 'tokens / month', desc: 'Gold verification seal on profile' },
     { key: 'featured_listing_cost' as const, label: 'Featured Listing', unit: 'tokens / week', desc: 'Top placement in search results' },
     { key: 'hot_property_cost' as const, label: 'Hot Property Tag', unit: 'tokens / week', desc: '"Hot" badge with boosted visibility' },
