@@ -39,6 +39,7 @@ export function AdminListings() {
   const [reports, setReports] = useState<ComplianceReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [resolveLoading, setResolveLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchReports = useCallback(async () => {
     setReportsLoading(true);
@@ -84,6 +85,7 @@ export function AdminListings() {
 
   async function moderate(listing: Listing, status: 'approved' | 'rejected' | 'flagged', reason?: string) {
     setActionLoading(listing.id);
+    setActionError(null);
     const approvalLevel = status === 'approved' ? 'nirmal_approved' : status === 'rejected' ? 'rejected' : 'flagged';
     const { error } = await supabase.from('listings').update({
       moderation_status: status,
@@ -94,6 +96,8 @@ export function AdminListings() {
     if (!error) {
       await logAdminAction(supabase, user!.email!, `${status}_listing`, 'listings', listing.id, { title: listing.title, reason });
       fetchListings();
+    } else {
+      setActionError(`Could not ${status === 'approved' ? 'approve' : status === 'rejected' ? 'reject' : 'flag'} "${listing.title}": ${error.message}`);
     }
     setActionLoading(null);
     setRejectModal(null);
@@ -130,6 +134,13 @@ export function AdminListings() {
             </div>
           )}
         </section>
+
+        {actionError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start justify-between gap-3">
+            <span>{actionError}</span>
+            <button onClick={() => setActionError(null)} className="text-red-400 hover:text-red-600" aria-label="Dismiss">×</button>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3">
