@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -13,12 +13,21 @@ const GoogleIcon = () => (
   </svg>
 );
 
+// Read once at load, before Supabase clears the address bar: did the visitor arrive from a password-reset email?
+const ARRIVED_FROM_RESET_LINK = typeof window !== 'undefined' && window.location.hash.includes('type=recovery');
+const RESET_LINK_EXPIRED = typeof window !== 'undefined' && window.location.hash.includes('error_code=otp_expired');
+
 export function LoginPage() {
-  const [mode, setMode] = useState<'login' | 'forgot'>('login');
+  const [mode, setMode] = useState<'login' | 'forgot' | 'newpass'>(
+    ARRIVED_FROM_RESET_LINK ? 'newpass' : RESET_LINK_EXPIRED ? 'forgot' : 'login'
+  );
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(RESET_LINK_EXPIRED ? 'This reset link has expired or was already used. Please request a new one.' : '');
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const { signIn } = useAuth();
@@ -37,6 +46,27 @@ export function LoginPage() {
   };
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') { setMode('newpass'); setError(''); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) { setError('Please use both letters and numbers.'); return; }
+    if (newPassword !== confirmPassword) { setError('The two passwords do not match.'); return; }
+    setLoading(true);
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
+    if (updateError) { setError(updateError.message || 'Could not update your password. Please try again.'); return; }
+    setPasswordUpdated(true);
+    setTimeout(() => navigate('/dashboard'), 2000);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -51,7 +81,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/dashboard`,
+      redirectTo: `${window.location.origin}/login`,
     });
     setLoading(false);
     if (error) setError(error.message);
@@ -75,10 +105,10 @@ export function LoginPage() {
             </div>
           </Link>
           <h1 className="text-2xl font-serif font-bold text-cream mt-6">
-            {mode === 'login' ? 'Welcome Back' : 'Reset Password'}
+            {mode === 'login' ? 'Welcome Back' : mode === 'newpass' ? 'Set New Password' : 'Reset Password'}
           </h1>
           <p className="text-cream/60 mt-2">
-            {mode === 'login' ? 'Sign in to your Property Herald account' : 'Enter your email to receive a reset link'}
+            {mode === 'login' ? 'Sign in to your Property Herald account' : mode === 'newpass' ? 'Choose a new password for your account' : 'Enter your email to receive a reset link'}
           </p>
         </div>
 
@@ -90,7 +120,39 @@ export function LoginPage() {
             </div>
           )}
 
-          {resetSent ? (
+          {passwordUpdated ? (
+            <div className="text-center py-4">
+              <CheckCircle className="w-12 h-12 text-gold mx-auto mb-4" />
+              <h3 className="font-serif font-bold text-navy text-lg mb-2">Password Updated</h3>
+              <p className="text-warm-gray text-sm">Taking you to your dashboard…</p>
+            </div>
+          ) : mode === 'newpass' ? (
+            <form onSubmit={handleNewPassword} className="space-y-5">
+              <div>
+                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input id="new-password" type={showPassword ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} required placeholder="At least 8 characters, letters and numbers"
+                    className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none transition-all" />
+                  <button type="button" onClick={() => setShowPassword(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input id="confirm-password" type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required placeholder="Type it again"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none transition-all" />
+                </div>
+              </div>
+              <button type="submit" disabled={loading}
+                className="w-full py-3 bg-navy text-cream font-display font-bold rounded-xl hover:bg-navy/90 transition-all disabled:opacity-50">
+                {loading ? 'Saving…' : 'Save New Password'}
+              </button>
+            </form>
+          ) : resetSent ? (
             <div className="text-center py-4">
               <CheckCircle className="w-12 h-12 text-gold mx-auto mb-4" />
               <h3 className="font-serif font-bold text-navy text-lg mb-2">Check Your Email</h3>
