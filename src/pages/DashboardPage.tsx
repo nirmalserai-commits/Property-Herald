@@ -88,7 +88,7 @@ export function DashboardPage() {
       supabase.from('inquiries').select('*, listing:listings(*)').eq('profile_id', user!.id).order('created_at', { ascending: false }),
       supabase.from('magazine_ads').select('*, magazine:magazines(*)').eq('profile_id', user!.id),
       supabase.from('cities').select('*').order('name'),
-      supabase.from('localities').select('*').eq('is_active', true).order('name'),
+      supabase.from('localities').select('*').or(`is_active.eq.true,submitted_by.eq.${user!.id}`).order('name'),
       supabase.from('token_wallets').select('*').eq('user_id', user!.id).maybeSingle(),
       supabase.from('token_transactions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
     ]);
@@ -436,7 +436,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
     title: '', city_id: '', description: '', specialties: '', years_experience: 0, projects_completed: 0,
     property_types: [] as string[], deal_types: [] as string[],
     locality_id: '', sector: '', brochure_url: '', photos: [] as string[], furnishing_status: '' as string,
-    market_track: defaultTrack, contact_phone: '',
+    market_track: defaultTrack, contact_phone: '', price_min: '', price_max: '', size_sqft: '',
     is_off_plan: false, escrow_account_status: '', escrow_account_number: '', rera_qr_code: '',
   };
       const [formData, setFormData] = useState(emptyForm);
@@ -446,7 +446,39 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
     const [uploadingBrochure, setUploadingBrochure] = useState(false);
     const [generatingDesc, setGeneratingDesc] = useState(false);
     const [descError, setDescError] = useState<string | null>(null);
-    const localitiesForCity = localities.filter(l => sameId(l.city_id, formData.city_id));
+    const [extraLocalities, setExtraLocalities] = useState<Locality[]>([]);
+    const [newLocality, setNewLocality] = useState('');
+    const [addingLocality, setAddingLocality] = useState(false);
+    const [localityMsg, setLocalityMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+    const allLocalities = [...localities, ...extraLocalities.filter(x => !localities.some(l => l.id === x.id))];
+    const localitiesForCity = allLocalities.filter(l => sameId(l.city_id, formData.city_id));
+
+    async function handleSuggestLocality() {
+      setLocalityMsg(null);
+      const name = newLocality.trim().replace(/\s+/g, ' ');
+      if (!formData.city_id) { setLocalityMsg({ type: 'err', text: 'Select a city first.' }); return; }
+      if (name.length < 2 || name.length > 60) { setLocalityMsg({ type: 'err', text: 'Locality name must be 2 to 60 characters.' }); return; }
+      const existing = localitiesForCity.find(l => l.name.trim().toLowerCase() === name.toLowerCase());
+      if (existing) {
+        setFormData(f => ({ ...f, locality_id: String(existing.id) }));
+        setNewLocality('');
+        setLocalityMsg({ type: 'ok', text: `"${existing.name}" already exists, so it has been selected.` });
+        return;
+      }
+      setAddingLocality(true);
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { setLocalityMsg({ type: 'err', text: 'Your session has expired. Please sign in again.' }); setAddingLocality(false); return; }
+      const city = cities.find(c => sameId(c.id, formData.city_id));
+      const { data, error } = await supabase.from('localities')
+        .insert({ city_id: Number(formData.city_id), name, state: city?.state ?? null, is_active: false, is_verified: false, submitted_by: authUser.id })
+        .select('*').single();
+      setAddingLocality(false);
+      if (error || !data) { setLocalityMsg({ type: 'err', text: `Could not add the locality: ${error?.message ?? 'unknown error'}` }); return; }
+      setExtraLocalities(prev => [...prev, data as Locality]);
+      setFormData(f => ({ ...f, locality_id: String((data as Locality).id) }));
+      setNewLocality('');
+      setLocalityMsg({ type: 'ok', text: `"${name}" added and selected. It will be reviewed by our team.` });
+    }
 
     async function handlePhotoUpload(file: File) {
       setUploadingPhoto(true);
@@ -488,6 +520,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
             deal_types: formData.deal_types,
             furnishing_status: formData.furnishing_status || undefined,
             market_track: formData.market_track,
+            price: formData.price_min ? Number(formData.price_min.replace(/[^\d]/g, '')) || undefined : undefined,
           },
         });
         if (error || !data?.description) {
@@ -551,10 +584,23 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
         return;
       }
 
-      const { title, market_track, is_off_plan, ...rest } = formData;
+      const { title, market_track, is_off_plan, price_min: priceMinRaw, price_max: priceMaxRaw, size_sqft: sizeRaw, ...rest } = formData;
+      const toWhole = (v: string) => { const n = parseInt(String(v).replace(/[^\d]/g, ''), 10); return Number.isFinite(n) && n > 0 ? n : null; };
+      const priceMin = toWhole(priceMinRaw);
+      const priceMax = toWhole(priceMaxRaw);
+      const sizeSqft = toWhole(sizeRaw);
+      if (priceMin && priceMax && priceMax < priceMin) {
+        setSaveError('"Up to" price cannot be lower than the starting price.');
+        setSaving(false);
+        return;
+      }
       const data = {
         ...rest,
-        project_name: title,
+        project_name: title.trim(),
+        price_min: priceMin,
+        price_max: priceMax,
+        price: priceMin,
+        size_sqft: sizeSqft,
               location: selectedCity?.name || '',
         profile_id: user.id,
         specialties: formData.specialties.split(',').map(s => s.trim()).filter(Boolean),
@@ -589,6 +635,10 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
   };
 
   async function activateFeature(listing: Listing, feature: 'featured' | 'hot') {
+    if (listing.moderation_status !== 'approved') {
+      setTokenError({ listingId: listing.id, msg: 'Featured and Hot tags can be bought only after your listing is approved.' });
+      return;
+    }
     const cost = feature === 'featured' ? tokenCosts.featured_listing_cost : tokenCosts.hot_property_cost;
     const label = feature === 'featured' ? `Featured Listing — 7 days` : `Hot Property Tag — 7 days`;
 
@@ -751,6 +801,44 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
                     </select>
                   </div>
                 </div>
+                {formData.city_id && (
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl">
+                    <label className="block text-xs font-medium text-navy mb-1.5">Can't find your locality? Add it</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={newLocality} maxLength={60} onChange={(e) => setNewLocality(e.target.value)}
+                        placeholder="Locality name"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold/40 outline-none bg-white" />
+                      <button type="button" onClick={handleSuggestLocality} disabled={addingLocality || !newLocality.trim()}
+                        className="px-4 py-2 bg-navy text-cream rounded-lg text-sm font-medium disabled:opacity-50">
+                        {addingLocality ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                    {localityMsg && <p className={`text-xs mt-1.5 ${localityMsg.type === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{localityMsg.text}</p>}
+                  </div>
+                )}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Price from ({formData.market_track === 'dubai' ? 'AED' : '₹'})</label>
+                    <input type="text" inputMode="numeric" value={formData.price_min}
+                      onChange={(e) => setFormData({ ...formData, price_min: e.target.value.replace(/[^\d]/g, '') })}
+                      placeholder="e.g. 8500000"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Up to (optional)</label>
+                    <input type="text" inputMode="numeric" value={formData.price_max}
+                      onChange={(e) => setFormData({ ...formData, price_max: e.target.value.replace(/[^\d]/g, '') })}
+                      placeholder="e.g. 12000000"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy mb-1">Area (sq ft)</label>
+                    <input type="text" inputMode="numeric" value={formData.size_sqft}
+                      onChange={(e) => setFormData({ ...formData, size_sqft: e.target.value.replace(/[^\d]/g, '') })}
+                      placeholder="e.g. 1200"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 outline-none" />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-navy mb-2">Property Types</label>
                   <div className="flex gap-3">
@@ -899,7 +987,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => {
                     setEditingListing(listing);
-                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [], furnishing_status: listing.furnishing_status || '', market_track: (listing as any).is_dubai ? 'dubai' : 'india', contact_phone: (listing as any).contact_phone || '', is_off_plan: !!((listing as any).escrow_account_status || (listing as any).escrow_account_number), escrow_account_status: (listing as any).escrow_account_status || '', escrow_account_number: (listing as any).escrow_account_number || '', rera_qr_code: (listing as any).rera_qr_code || '' });
+                    setFormData({ title: listing.title, city_id: listing.city_id, description: listing.description || '', specialties: listing.specialties?.join(', ') || '', years_experience: listing.years_experience || 0, projects_completed: listing.projects_completed || 0, property_types: listing.property_types || [], deal_types: listing.deal_types || [], locality_id: listing.locality_id || '', sector: listing.sector || '', brochure_url: listing.brochure_url || '', photos: listing.photos || [], furnishing_status: listing.furnishing_status || '', market_track: (listing as any).is_dubai ? 'dubai' : 'india', contact_phone: (listing as any).contact_phone || '', price_min: (listing as any).price_min ? String((listing as any).price_min) : '', price_max: (listing as any).price_max ? String((listing as any).price_max) : '', size_sqft: (listing as any).size_sqft ? String((listing as any).size_sqft) : '', is_off_plan: !!((listing as any).escrow_account_status || (listing as any).escrow_account_number), escrow_account_status: (listing as any).escrow_account_status || '', escrow_account_number: (listing as any).escrow_account_number || '', rera_qr_code: (listing as any).rera_qr_code || '' });
                     setShowForm(true);
                   }} className="p-2 text-warm-gray hover:text-navy hover:bg-navy/5 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
                   <button onClick={() => handleDelete(listing.id)} className="p-2 text-warm-gray hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -913,6 +1001,9 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
                 </div>
               )}
 
+              {listing.moderation_status !== 'approved' && (
+                <p className="text-xs text-warm-gray mb-2">Featured and Hot tags unlock once your listing is approved.</p>
+              )}
               <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
                 {/* Featured toggle */}
                 {listing.is_featured ? (
@@ -922,7 +1013,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
                   </button>
                 ) : (
                   <button
-                    disabled={tokenAction === listing.id + 'featured'}
+                    disabled={listing.moderation_status !== 'approved' || tokenAction === listing.id + 'featured'}
                     onClick={() => activateFeature(listing, 'featured')}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-warm-gray rounded-lg text-xs font-semibold hover:bg-amber-50 hover:text-amber-700 transition-colors disabled:opacity-50">
                     {tokenAction === listing.id + 'featured' ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <Star className="w-3 h-3" />}
@@ -938,7 +1029,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
                   </button>
                 ) : (
                   <button
-                    disabled={tokenAction === listing.id + 'hot'}
+                    disabled={listing.moderation_status !== 'approved' || tokenAction === listing.id + 'hot'}
                     onClick={() => activateFeature(listing, 'hot')}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-warm-gray rounded-lg text-xs font-semibold hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50">
                     {tokenAction === listing.id + 'hot' ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <Flame className="w-3 h-3" />}
