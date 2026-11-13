@@ -20,7 +20,7 @@ export function Navbar() {
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
-    supabase.from('cities').select('name, slug').order('name').limit(10)
+    supabase.from('cities').select('name, slug').eq('is_active', true).eq('market_track', 'india').not('slug', 'is', null).order('name').limit(12)
       .then(({ data }) => {
         if (data) setNavCities(data);
       });
