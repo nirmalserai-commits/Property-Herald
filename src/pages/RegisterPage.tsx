@@ -25,6 +25,42 @@ const TOKEN_BUNDLES = [
   { id: 'enterprise', name: 'Enterprise', tokens: 500, price: 10000, desc: 'Maximum reach and visibility' },
 ];
 
+// Phone numbers: UAE (+971) and India (+91) numbers must have the exact right length;
+// any other country is accepted in international format (8-15 digits).
+type PhoneCheck = { ok: true; value: string } | { ok: false; message: string };
+
+function checkPhone(raw: string, track: 'india' | 'dubai'): PhoneCheck {
+  let s = raw.trim().replace(/[\s\-().]/g, '');
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  if (!/^\+?\d+$/.test(s)) return { ok: false, message: 'Phone numbers can contain digits only (with an optional + at the start).' };
+
+  if (!s.startsWith('+')) {
+    if (track === 'dubai') {
+      if (/^05\d{8}$/.test(s)) s = '+971' + s.slice(1);
+      else if (/^5\d{8}$/.test(s)) s = '+971' + s;
+      else if (/^971\d{8,9}$/.test(s)) s = '+' + s;
+      else return { ok: false, message: 'Enter a valid UAE number, for example +971 50 123 4567.' };
+    } else {
+      if (/^[6-9]\d{9}$/.test(s)) s = '+91' + s;
+      else if (/^0[6-9]\d{9}$/.test(s)) s = '+91' + s.slice(1);
+      else if (/^91[6-9]\d{9}$/.test(s)) s = '+' + s;
+      else return { ok: false, message: 'Enter a valid 10-digit Indian mobile number, for example +91 98765 43210.' };
+    }
+  }
+
+  const digits = s.slice(1);
+  if (digits.startsWith('971')) {
+    const rest = digits.slice(3);
+    const valid = rest.startsWith('5') ? /^5\d{8}$/.test(rest) : /^[234679]\d{7}$/.test(rest);
+    if (!valid) return { ok: false, message: 'A UAE number needs 9 digits after +971 for a mobile (for example +971 50 123 4567) or 8 digits for a landline.' };
+  } else if (digits.startsWith('91')) {
+    if (!/^[6-9]\d{9}$/.test(digits.slice(2))) return { ok: false, message: 'An Indian number needs exactly 10 digits after +91, starting with 6, 7, 8 or 9.' };
+  } else if (!/^[1-9]\d{7,14}$/.test(digits)) {
+    return { ok: false, message: 'Enter the number in international format, for example +44 7700 900123.' };
+  }
+  return { ok: true, value: '+' + digits };
+}
+
 export function RegisterPage() {
   const [step, setStep] = useState(1);
   const [cities, setCities] = useState<City[]>([]);
@@ -82,6 +118,10 @@ export function RegisterPage() {
       if (!formData.business_name || !formData.contact_person || !formData.phone || !formData.whatsapp_number || !formData.city_id) {
         setError('Please fill in all required fields'); return false;
       }
+      const phoneCheck = checkPhone(formData.phone, formData.market_track);
+      if (!phoneCheck.ok) { setError('Phone number: ' + phoneCheck.message); return false; }
+      const waCheck = checkPhone(formData.whatsapp_number, formData.market_track);
+      if (!waCheck.ok) { setError('WhatsApp number: ' + waCheck.message); return false; }
       if (formData.property_types.length === 0) { setError('Please select at least one property type'); return false; }
       if (formData.deal_types.length === 0) { setError('Please select at least one deal type'); return false; }
     }
@@ -91,6 +131,10 @@ export function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    const phoneCheck = checkPhone(formData.phone, formData.market_track);
+    const waCheck = checkPhone(formData.whatsapp_number, formData.market_track);
+    const cleanPhone = phoneCheck.ok ? phoneCheck.value : formData.phone;
+    const cleanWhatsapp = waCheck.ok ? waCheck.value : formData.whatsapp_number;
     setLoading(true);
     setError('');
 
@@ -98,8 +142,8 @@ export function RegisterPage() {
       business_name: formData.business_name,
       business_type: formData.business_type,
       contact_person: formData.contact_person,
-      phone: formData.phone,
-      whatsapp_number: formData.whatsapp_number,
+      phone: cleanPhone,
+      whatsapp_number: cleanWhatsapp,
       city_id: formData.city_id,
       description: formData.description,
       website_url: formData.website_url,
@@ -126,8 +170,8 @@ export function RegisterPage() {
       business_name: formData.business_name,
       business_type: formData.business_type,
       contact_person: formData.contact_person,
-      phone: formData.phone,
-      whatsapp_number: formData.whatsapp_number,
+      phone: cleanPhone,
+      whatsapp_number: cleanWhatsapp,
       city_id: formData.city_id,
       description: formData.description || null,
       website_url: formData.website_url || null,
@@ -380,7 +424,7 @@ export function RegisterPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">WhatsApp Number *</label>
                       <div className="relative">
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input type="tel" value={formData.whatsapp_number} onChange={e => set('whatsapp_number', e.target.value)} required placeholder="WhatsApp number"
+                        <input type="tel" value={formData.whatsapp_number} onChange={e => set('whatsapp_number', e.target.value)} required placeholder={formData.market_track === 'dubai' ? '+971 501234567' : '+91 9876543210'}
                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gold/40 focus:border-gold/60 outline-none" />
                       </div>
                     </div>
