@@ -13,15 +13,25 @@ export function DirectoryPage() {
   const [listings, setListings] = useState<ListingWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedCity, setSelectedCity] = useState<string>(citySlug || 'mumbai');
+  const [selectedCity, setSelectedCity] = useState<string>(citySlug || '');
   const [selectedType, setSelectedType] = useState<string>(searchParams.get('type') || '');
   const [selectedPropertyType, setSelectedPropertyType] = useState<string>(searchParams.get('property_type') || '');
   const [selectedDealType, setSelectedDealType] = useState<string>(searchParams.get('deal') || '');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    supabase.from('cities').select('*').order('name').then(({ data }) => { if (data) setCities(data as City[]); });
+    setSelectedCity(citySlug || '');
+  }, [citySlug]);
+
+  useEffect(() => {
+    supabase.from('cities').select('*').eq('is_active', true).not('slug', 'is', null).order('name')
+      .then(({ data }) => { if (data) setCities(data as City[]); });
   }, []);
+
+  // The market (India or UAE) follows the city in the URL; /directory on its own is the India directory.
+  const currentCity = citySlug ? cities.find((c) => c.slug === citySlug) ?? null : null;
+  const track = currentCity?.market_track ?? 'india';
+  const trackCities = cities.filter((c) => (c.market_track ?? 'india') === track);
 
   useEffect(() => {
     async function fetchListings() {
@@ -31,19 +41,27 @@ export function DirectoryPage() {
         .eq('is_active', true).order('is_featured', { ascending: false }).order('created_at', { ascending: false });
 
       if (citySlug) {
-        const { data: cityData } = await supabase.from('cities').select('id').eq('slug', citySlug).single();
-        if (cityData) query = query.eq('city_id', cityData.id);
+        // One city: show everything listed in that city.
+        const { data: cityData } = await supabase.from('cities').select('id').eq('slug', citySlug).maybeSingle();
+        if (!cityData) { setListings([]); setLoading(false); return; }
+        query = query.eq('city_id', cityData.id);
+      } else {
+        // No city chosen: show the whole India directory (UAE listings live under Dubai Property).
+        const { data: indiaCities } = await supabase.from('cities').select('id').eq('is_active', true).eq('market_track', 'india');
+        const ids = (indiaCities ?? []).map((c) => c.id);
+        if (ids.length === 0) { setListings([]); setLoading(false); return; }
+        query = query.in('city_id', ids);
       }
-      if (selectedType) query = query.filter('profile.business_type', 'eq', selectedType);
 
       const { data, error } = await query;
       if (data && !error) setListings(data as ListingWithProfile[]);
       setLoading(false);
     }
     fetchListings();
-  }, [citySlug, selectedType]);
+  }, [citySlug]);
 
-  const filteredListings = listings.filter((listing) => {
+  // Search, property and deal filters apply first, so the type counts match what the visitor sees.
+  const baseListings = listings.filter((listing) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!listing.title?.toLowerCase().includes(q) && !listing.profile?.business_name?.toLowerCase().includes(q) && !listing.city?.name?.toLowerCase().includes(q)) return false;
@@ -53,7 +71,16 @@ export function DirectoryPage() {
     return true;
   });
 
-  const currentCity = citySlug ? cities.find((c) => c.slug === citySlug) : null;
+  const typeCounts: Record<string, number> = { developer: 0, agency: 0, agent: 0 };
+  for (const l of baseListings) {
+    const t = l.profile?.business_type;
+    if (t && t in typeCounts) typeCounts[t] += 1;
+  }
+
+  // Default is everything in the city; a type pill is an optional filter on top.
+  const filteredListings = selectedType
+    ? baseListings.filter((l) => l.profile?.business_type === selectedType)
+    : baseListings;
 
   return (
     <div className="min-h-screen bg-cream">
@@ -64,7 +91,7 @@ export function DirectoryPage() {
             {currentCity ? `${currentCity.name} Real Estate Directory` : 'Real Estate Directory'}
           </h1>
           <p className="text-cream/70 text-lg max-w-2xl mx-auto">
-            Find trusted builders, agents, and agencies {currentCity ? `in ${currentCity.name}` : 'across India'} — Residential & Commercial, Buy & Rent
+            Find trusted builders, agents, and agencies {currentCity ? `in ${currentCity.name}` : (track === 'dubai' ? 'across the UAE' : 'across India')} — Residential & Commercial, Buy & Rent
           </p>
         </div>
       </div>
@@ -81,10 +108,10 @@ export function DirectoryPage() {
             </div>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); if (e.target.value) window.location.href = `/directory/${e.target.value}`; }}
+              <select value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); window.location.href = e.target.value ? `/directory/${e.target.value}` : '/directory'; }}
                 className="w-full pl-10 pr-8 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold/50 outline-none appearance-none bg-white text-sm">
-                <option value="">All Cities</option>
-                {cities.map((city) => (<option key={city.id} value={city.slug}>{city.name}</option>))}
+                <option value="">{track === 'dubai' ? 'All UAE Cities' : 'All Cities'}</option>
+                {trackCities.map((city) => (<option key={city.id} value={city.slug}>{city.name}</option>))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
@@ -123,6 +150,7 @@ export function DirectoryPage() {
                     : 'bg-cream border border-gold/20 text-navy hover:border-gold/50'
                 }`}>
                 <Icon className="w-4 h-4 mr-2" />{label}
+                <span className={`ml-2 text-xs ${selectedType === value ? 'text-cream/80' : 'text-warm-gray'}`}>({typeCounts[value] ?? 0})</span>
               </button>
             ))}
             {(selectedCity || selectedType || selectedPropertyType || selectedDealType) && (
@@ -215,7 +243,11 @@ function ListingCard({ listing }: { listing: ListingWithProfile }) {
                 </span>
               )}
             </div>
-            <p className="text-sm text-warm-gray mb-2">{hasProfile ? (typeLabels[profile!.business_type] ?? 'Real Estate Professional') : 'Listing awaiting profile'}</p>
+            <p className="mb-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-navy/10 text-navy border border-navy/15">
+                {hasProfile ? (typeLabels[profile!.business_type] ?? 'Real Estate Professional') : 'Listing awaiting profile'}
+              </span>
+            </p>
             <div className="flex items-center flex-wrap gap-2">
               {profile?.is_verified && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gold/10 text-gold border border-gold/25">
