@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { AdminLayout, logAdminAction } from '../../components/AdminLayout';
 import { useAuth } from '../../context/AuthContext';
 import type { Listing } from '../../types/database';
-import { Search, Check, X, Flag, ChevronDown, ChevronLeft, ChevronRight, Plus, ShieldAlert } from 'lucide-react';
+import { Search, Check, X, Flag, Star, Flame, ChevronDown, ChevronLeft, ChevronRight, Plus, ShieldAlert } from 'lucide-react';
 
 type Filter = 'all' | 'pending' | 'approved' | 'rejected' | 'flagged';
 
@@ -104,6 +104,25 @@ export function AdminListings() {
     setRejectReason('');
   }
 
+  // Admin can switch Featured / HOT on or off for any approved listing, free of tokens (7 days when on).
+  async function togglePromo(listing: Listing, feature: 'featured' | 'hot') {
+    setActionLoading(listing.id);
+    setActionError(null);
+    const isOn = feature === 'featured' ? listing.is_featured : listing.is_hot;
+    const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const update = feature === 'featured'
+      ? { is_featured: !isOn, featured_expires_at: isOn ? null : expiry }
+      : { is_hot: !isOn, hot_expires_at: isOn ? null : expiry };
+    const { error } = await supabase.from('listings').update(update).eq('id', listing.id);
+    if (!error) {
+      await logAdminAction(supabase, user!.email!, `${isOn ? 'remove' : 'set'}_${feature}_listing`, 'listings', listing.id, { title: listing.title, by: 'admin' });
+      fetchListings();
+    } else {
+      setActionError(`Could not change ${feature === 'featured' ? 'Featured' : 'HOT'} for "${listing.title}": ${error.message}`);
+    }
+    setActionLoading(null);
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -189,7 +208,11 @@ export function AdminListings() {
                 ) : listings.map(l => (
                   <tr key={l.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-navy max-w-xs truncate">{l.title}</div>
+                      <div className="font-medium text-navy max-w-xs truncate">
+                        {l.title}
+                        {l.is_featured && <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] rounded font-semibold">Featured</span>}
+                        {l.is_hot && <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] rounded font-semibold">HOT</span>}
+                      </div>
                       {l.moderation_reason && (
                         <div className="text-xs text-red-500 truncate max-w-xs">{l.moderation_reason}</div>
                       )}
@@ -232,6 +255,22 @@ export function AdminListings() {
                           className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors"
                         >
                           <Flag className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => togglePromo(l, 'featured')}
+                          disabled={actionLoading === l.id || l.moderation_status !== 'approved'}
+                          title={l.moderation_status !== 'approved' ? 'Approve the listing first' : l.is_featured ? 'Remove Featured' : 'Make Featured (7 days, free)'}
+                          className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 ${l.is_featured ? 'bg-amber-100 text-amber-700' : 'text-gray-400 hover:bg-amber-50 hover:text-amber-600'}`}
+                        >
+                          <Star className={`w-3.5 h-3.5 ${l.is_featured ? 'fill-current' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => togglePromo(l, 'hot')}
+                          disabled={actionLoading === l.id || l.moderation_status !== 'approved'}
+                          title={l.moderation_status !== 'approved' ? 'Approve the listing first' : l.is_hot ? 'Remove HOT' : 'Make HOT (7 days, free)'}
+                          className={`p-1.5 rounded-lg transition-colors disabled:opacity-30 ${l.is_hot ? 'bg-red-100 text-red-700' : 'text-gray-400 hover:bg-red-50 hover:text-red-600'}`}
+                        >
+                          <Flame className={`w-3.5 h-3.5 ${l.is_hot ? 'fill-current' : ''}`} />
                         </button>
                       </div>
                     </td>
