@@ -76,8 +76,10 @@ export function AdminUsers() {
       p_amount: amount,
       p_reason: grantReason,
     });
-    if (err || !data?.success) {
-      setError(err?.message || data?.error || 'Failed to grant tokens');
+    // admin_grant_tokens returns a one-row table, so supabase-js gives an array.
+    const result = Array.isArray(data) ? data[0] : data;
+    if (err || !result?.success) {
+      setError(err?.message || result?.error || 'Failed to grant tokens');
     } else {
       await logAdminAction(supabase, user!.email!, 'grant_tokens', 'token_wallets', grantModal.id, { amount, reason: grantReason });
       setGrantModal(null);
