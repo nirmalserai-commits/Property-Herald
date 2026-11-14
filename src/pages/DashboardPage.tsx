@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { Listing, Inquiry, MagazineAd, City, Locality, TokenWallet, TokenTransaction } from '../types/database';
 import {
   Building2, Users, MessageCircle, BookOpen, Settings, Plus, TrendingUp, Eye,
   Phone, Calendar, CheckCircle, ChevronRight, Edit, Trash2, Coins, AlertTriangle,
-  Star, Flame, Shield, Receipt, ArrowRight, X, Zap, Upload, Image as ImageIcon, FileText
+  Star, Flame, Shield, Receipt, ArrowRight, X, Zap, Upload, Image as ImageIcon, FileText,
+  Home, LogOut
 } from 'lucide-react';
 
 interface TokenCosts {
@@ -41,7 +42,12 @@ function addMonths(months: number) {
 // ─── root component ─────────────────────────────────────────────────────────
 
 export function DashboardPage() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
   const [activeTab, setActiveTab] = useState('overview');
   const [listings, setListings] = useState<Listing[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -148,6 +154,16 @@ export function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Link to="/"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cream/20 text-sm font-semibold text-cream/80 hover:bg-cream/10 transition-all">
+                <Home className="w-4 h-4" />
+                Home
+              </Link>
+              <button type="button" onClick={handleSignOut}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cream/20 text-sm font-semibold text-cream/80 hover:bg-cream/10 transition-all">
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
               {wallet !== null && (
                 <Link to="/tokens"
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-all ${
