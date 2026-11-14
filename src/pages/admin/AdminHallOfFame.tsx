@@ -32,7 +32,7 @@ export function AdminHallOfFame() {
     setUploading(true);
     const ext = file.name.split('.').pop();
     const path = `hall-of-fame/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('Assets').upload(path, file);
+    const { error } = await supabase.storage.from('Assets').upload(path, file, { cacheControl: '604800' });
     if (!error) { const { data } = supabase.storage.from('Assets').getPublicUrl(path); setForm(f => ({ ...f, profile_picture_url: data.publicUrl })); }
     setUploading(false);
   }
