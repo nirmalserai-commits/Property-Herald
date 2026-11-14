@@ -50,7 +50,7 @@ export function AdminAssets() {
   async function handleUpload(file: File) {
     setUploading(true);
     const path = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from('Assets').upload(path, file);
+    const { error } = await supabase.storage.from('Assets').upload(path, file, { cacheControl: '604800' });
     if (!error) fetchFiles();
     setUploading(false);
   }
@@ -58,7 +58,7 @@ export function AdminAssets() {
   async function handleTeamUpload(name: string, file: File) {
     setUploadingMember(name);
     const path = `team/${Date.now()}-${file.name.replace(/\s/g, '_')}`;
-    const { error } = await supabase.storage.from('Assets').upload(path, file);
+    const { error } = await supabase.storage.from('Assets').upload(path, file, { cacheControl: '604800' });
     if (error) { setUploadingMember(null); return; }
     const { data: urlData } = supabase.storage.from('Assets').getPublicUrl(path);
     const key = `team_photo_${name}`;
