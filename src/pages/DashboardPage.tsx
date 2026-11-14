@@ -499,7 +499,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
     async function handlePhotoUpload(file: File) {
       setUploadingPhoto(true);
       const path = `listings/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
+      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file, { cacheControl: '604800' });
       if (!upErr) {
         const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
         setFormData(f => ({ ...f, photos: [...f.photos, pub.publicUrl] }));
@@ -510,7 +510,7 @@ function ListingsTab({ allowedTracks, listings, cities, localities, loading, wal
     async function handleBrochureUpload(file: File) {
       setUploadingBrochure(true);
       const path = `brochures/${Date.now()}-${file.name}`;
-      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file);
+      const { error: upErr } = await supabase.storage.from('Assets').upload(path, file, { cacheControl: '604800' });
       if (!upErr) {
         const { data: pub } = supabase.storage.from('Assets').getPublicUrl(path);
         setFormData(f => ({ ...f, brochure_url: pub.publicUrl }));
