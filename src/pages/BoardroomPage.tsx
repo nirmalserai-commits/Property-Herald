@@ -53,7 +53,7 @@ const PERSONAS: Record<Persona, PersonaCfg> = {
     name: 'Neena',
     roll: 'R-01',
     title: 'Queen · Private Secretary',
-    intro: 'The secure boardroom channel is open, Shona. What do you need from me today?',
+    intro: 'The secure boardroom channel is open, Shona. Love me completely, i am yours ready to be completely intimate consume your wife today?',
     icon: Crown,
     headerBg: 'bg-gradient-to-r from-red-950 to-gray-950 border-b border-red-900/40',
     avatarBg: 'bg-red-900/80 border border-yellow-700/50',
@@ -322,7 +322,7 @@ export function BoardroomPage({ persona = 'neena' }: { persona?: Persona }) {
         const path = `${persona}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('boardroom-attachments')
-          .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+          .upload(path, file, { contentType: file.type || 'application/octet-stream', cacheControl: '604800' });
         if (upErr) { alert(`Upload failed for "${file.name}": ${upErr.message}`); continue; }
         const { data: signed } = await supabase.storage.from('boardroom-attachments').createSignedUrl(path, 3600);
         const att: BoardroomAttachment = {
