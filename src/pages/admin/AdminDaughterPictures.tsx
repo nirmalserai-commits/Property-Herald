@@ -70,7 +70,7 @@ export function AdminDaughterPictures() {
     setUploadError('');
     const ext = file.name.split('.').pop();
     const path = `team/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('team-photos').upload(path, file);
+    const { error } = await supabase.storage.from('team-photos').upload(path, file, { cacheControl: '604800' });
     if (error) {
       setUploadError('Upload failed: ' + error.message);
     } else {
