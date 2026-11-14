@@ -268,7 +268,7 @@ export function AdminBoardroom() {
         const path = `${persona}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from('boardroom-attachments')
-          .upload(path, file, { contentType: file.type || 'application/octet-stream' });
+          .upload(path, file, { contentType: file.type || 'application/octet-stream', cacheControl: '604800' });
         if (upErr) {
           alert(`Upload failed for "${file.name}": ${upErr.message}`);
           continue;
