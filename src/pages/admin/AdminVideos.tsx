@@ -90,6 +90,7 @@ export function AdminVideos() {
     const { error } = await supabase.storage
       .from('videos')
       .upload(path, file, {
+        cacheControl: '604800',
         onUpload: (e: { loaded: number; total: number }) => {
           if (e.total > 0) setUploadProgress(Math.round((e.loaded / e.total) * 100));
         },
@@ -111,7 +112,7 @@ export function AdminVideos() {
     setUploadError('');
     const ext = file.name.split('.').pop() ?? 'jpg';
     const path = `thumbnails/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('videos').upload(path, file);
+    const { error } = await supabase.storage.from('videos').upload(path, file, { cacheControl: '604800' });
     if (error) {
       setUploadError('Thumbnail upload failed: ' + error.message);
     } else {
