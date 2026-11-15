@@ -1,12 +1,13 @@
-import { useEffect, useRef, ReactNode } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, Building2, ShieldCheck, Coins,
   TrendingUp, Bell, LogOut, ArrowLeft, Shield, Bot, Image, Landmark,
   Video, Handshake, Brain, Lock, Mail, Award, MapPin, FolderOpen, UserCheck,
-  Users as UsersIcon, Tag, Package, Gift, Wrench, Share2,
+  Users as UsersIcon, Tag, Package, Gift, Wrench, Share2, Activity,
 } from 'lucide-react';
 
 const ADMIN_EMAIL = 'nirmalserai@gmail.com';
@@ -14,6 +15,7 @@ const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
 
 const NAV = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+  { to: '/admin/monitoring', label: 'Monitoring Room', icon: Activity, exact: false },
   { to: '/admin/users', label: 'Users', icon: Users, exact: false },
   { to: '/admin/registrations', label: 'Registrations', icon: UserCheck, exact: false },
   { to: '/admin/listings', label: 'Listings', icon: Building2, exact: false },
@@ -49,6 +51,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const hiddenAtRef = useRef<number | null>(null);
+  const [redCount, setRedCount] = useState(0);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
@@ -76,6 +79,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isAdmin, signOut, navigate]);
+
+  // Red-alert badge for the Monitoring Room. One tiny count query every 2 minutes while this tab is visible.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let stopped = false;
+    async function poll() {
+      if (document.visibilityState !== 'visible') return;
+      const { count } = await supabase
+        .from('monitor_status')
+        .select('box_key', { count: 'exact', head: true })
+        .eq('state', 'red');
+      if (!stopped && typeof count === 'number') setRedCount(count);
+    }
+    void poll();
+    const id = window.setInterval(() => void poll(), 120000);
+    return () => { stopped = true; window.clearInterval(id); };
+  }, [isAdmin]);
 
   if (loading) {
     return (
@@ -124,6 +144,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               {label}
+              {to === '/admin/monitoring' && redCount > 0 && (
+                <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold animate-pulse">{redCount}</span>
+              )}
             </Link>
           ))}
         </nav>
